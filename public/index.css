@@ -1,0 +1,8 @@
+#screen {
+    width: 99vw;
+    height: 80vh;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+}
