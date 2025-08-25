@@ -96,9 +96,9 @@ generateCorrect();
                 dead = false;
             }
         }
-        if (dead && remainingTime > 50){
+        if (dead && remainingTime > 30){
                  clearInterval(roundTimer);
-           startRoundTimer(5);
+           startRoundTimer(3);
   setTimeout(()=>{
             for (const id in players){
                 console.log('DCload')
@@ -106,7 +106,7 @@ generateCorrect();
                 break;
             }
             
-        }, 5000);
+        }, 3000);
     }
     });
     socket.on('ready', (player, id) => {
@@ -142,14 +142,14 @@ generateCorrect();
                 dead = false;
             }
         }
-        if (dead && remainingTime > 50){
+        if (dead && remainingTime > 30){
                  clearInterval(roundTimer);
-           startRoundTimer(5);
+           startRoundTimer(3);
   setTimeout(()=>{
             
                 loadRound(player, false);
             
-        }, 5000);
+        }, 3000);
         }
         io.emit('lostGame', frontEndPlayers, player);
     });
@@ -179,14 +179,14 @@ generateCorrect();
         }
          console.log('dopadown');
             io.emit('finished', players[player], player);
-        if (allFinished && remainingTime > 50){
+        if (allFinished && remainingTime > 30){
            clearInterval(roundTimer);
-           startRoundTimer(5);
+           startRoundTimer(3);
   setTimeout(()=>{
             if (allFinished){
                 loadRound(player, false);
             }
-        }, 5000);
+        }, 3000);
         }
         
            
@@ -197,13 +197,13 @@ generateCorrect();
 
     socket.on('deadRound', (player) => {
         
-        if (remainingTime > 50){
+        if (remainingTime > 30){
 clearInterval(roundTimer);
-        startRoundTimer(5);
+        startRoundTimer(3);
             setTimeout(() => {
             
             loadRound(player, false);
-        }, 5000);
+        }, 3000);
         }
         
         
