@@ -8,37 +8,74 @@ const screen = document.querySelector('#screen');
 var gridRow = level; // Number of rows in the grid
 
 var gridData = []; // Array to hold grid data
-
-
+var remainingTime = 0;
 var players = 2;
 
 
 const frontEndPlayers = {}
 
-function createContainer(id){
+function createContainer(id, parentElement){
      // Clear the screen before creating a new grid
     const gridContainer = document.createElement('div');
     gridContainer.className = 'gridContainer'; // Correctly set the class name
     gridContainer.style.display = 'flex';
-    gridContainer.style.flexDirection = 'column';
+    gridContainer.style.flexDirection = 'row';
     gridContainer.dataset.id = id;
     gridContainer.style.border = '2px solid black'; // Add border to the grid container
+    gridContainer.style.justifyContent = 'center';
+    gridContainer.style.alignItems = 'center';
      // Set width of the grid container
     // Add properties to center the grid within its container
+    gridContainer.style.flex = '1 1 0';
+   
+    if (parentElement.id != 'screen'){
+        gridContainer.style.height = '100%'
+    }
+    else{
+        gridContainer.style.height = '50vh';
+    }
     
-    gridContainer.style.margin = 'auto'; // Center the grid container horizontally
+ 
+    var width = 1/Object.keys(frontEndPlayers).length *100;
+    gridContainer.style.width =  width + '%';
+    gridContainer.style.margin = '0px';
+    gridContainer.style.boxSizing = 'border-box';
+    gridContainer.style.alignItems = 'center'; 
+
     const temp = document.createElement('div');
     temp.className = 'textContainer';
     temp.dataset.id = id; // Set the data-id attribute
     console.log(temp.dataset.id);
     temp.style.textAlign = 'center'; // Center he text
-    temp.style.marginBottom = '10px'; // Add some space below the text
+    temp.style.width = '150px';
     temp.style.fontSize = '20px'; // Set font size for better visibility
     temp.style.color = 'black'; // Set text color
     temp.style.fontWeight = 'bold'; // Make the text bold
     gridContainer.appendChild(temp); // Append the text container to the grid container
-    temp.textContent = frontEndPlayers[id].username + ' Lives: ' + frontEndPlayers[id].lives + ' Score: ' + frontEndPlayers[id].score;// Add player ID text
-    screen.appendChild(gridContainer); // Append the grid container to the screen
+    if (socket.id === id){
+        temp.textContent = frontEndPlayers[id].username + " (YOU) ";
+        gridContainer.style.backgroundColor = 'orange';
+    }
+    else{
+        temp.textContent = frontEndPlayers[id].username 
+        gridContainer.style.backgroundColor = '#ADD8E6';
+    };
+        
+    let p1 = document.createElement('p');
+    let p2 = document.createElement('p')
+    let p3 = document.createElement('p')
+    p3.className = 'timer'
+    p1.textContent = ' Lives: ' + frontEndPlayers[id].lives 
+    p2.textContent = ' Score: ' + frontEndPlayers[id].score;// Add player ID text
+    p3.textContent = ' Time Left: ' + remainingTime;
+    temp.appendChild(p1);
+    temp.appendChild(p2);
+    temp.appendChild(p3);
+
+    
+
+    parentElement.appendChild(gridContainer);
+
 }
 function createGrid(x,id) {
 
@@ -51,6 +88,8 @@ function createGrid(x,id) {
     grid.style.display = 'flex';
     grid.style.flexDirection = 'row';
     grid.style.flexWrap = 'wrap';
+    grid.style.width = '40vh';
+    grid.style.height = '40vh';
    
     
      // Use screen's clientWidth and clientHeight to set grid size
@@ -58,18 +97,17 @@ function createGrid(x,id) {
     const screenHeight = screen.clientHeight;
 
     // Make the grid a square that is half the smaller dimension of the screen
-    const gridSize = Math.min(screenWidth, screenHeight) / 2; // Adjust size based on number of players
+    const gridSize = Math.min(screen.clientHeight, screen.clientWidth) / 1.5; // Adjust size based on number of players
 
-    grid.style.width = gridSize + 'px'; // Set the width of the grid
-    grid.style.height = gridSize + 'px'; // Set the height of the grid
+    
     gridContainer.appendChild(grid); // Append the grid to the grid container
     
     for (let i = 0; i < x; i++) {
         for (let j = 0; j < x; j++) {
             const cell = document.createElement('div');
             cell.className = 'newCell';
-            cell.style.width = 1/gridRow * 100 + '%'; // Set width of each cell
-            cell.style.height = 1/gridRow * 100 + '%'; // Set height of each cell
+            cell.style.width = 1/x * 100 + '%'; // Set width of each cell
+            cell.style.height = 1/x * 100 + "%"; // Set height of each cell
             cell.style.display = 'inline-block'; // Display cells inline
             cell.style.border = '1px solid black'; // Add border to cells
             cell.style.boxSizing = 'border-box'; // Include border in width/height calculations
@@ -80,7 +118,6 @@ function createGrid(x,id) {
         }
     }
 }
-
 
 
 function generateCorrect(id) {
@@ -108,10 +145,116 @@ function generateCorrect(id) {
                 });
                 }
             });
+            
         
     }, 3000); // Delay of 3 seconds (3000 milliseconds)
 }
-// ...existing code...
+
+function renderGameScreen(players, data, gridRow, isNewGame = false) {
+    screen.innerHTML = ''; // Clear the screen
+
+    const playerIds = Object.keys(players);
+    const playerCount = playerIds.length;
+
+    // Set up player data
+    for (const id in players) {
+        if (isNewGame) {
+            frontEndPlayers[id].score = 0;
+            frontEndPlayers[id].lives = 3;
+        }
+        frontEndPlayers[id].chances = 3;
+        frontEndPlayers[id].cellsClicked = [];
+        frontEndPlayers[id].correctData = structuredClone(data);
+    }
+    console.log(playerCount);
+    if (playerCount > 3) {
+        // Two-row layout for more than 3 players
+        screen.style.display = 'flex';
+        screen.style.flexDirection = 'column';
+        screen.style.justifyContent = 'center';
+        screen.style.alignItems = 'center';
+        screen.style.height = '100vh';
+        screen.style.width = '100vw'
+
+        const topRow = document.createElement('div');
+        topRow.style.display = 'flex';
+        topRow.style.justifyContent = 'center';
+        topRow.style.alignItems = 'center';
+        topRow.style.width = '100%';
+        topRow.style.height = '50%'
+
+        const bottomRow = document.createElement('div');
+        bottomRow.style.display = 'flex';
+        bottomRow.style.justifyContent = 'center';
+        bottomRow.style.alignItems = 'center';
+        bottomRow.style.width = '100%';
+        bottomRow.style.height = '50%'
+
+        screen.appendChild(topRow);
+        screen.appendChild(bottomRow);
+
+        const splitIndex = Math.ceil(playerCount / 2);
+
+        playerIds.forEach((id, index) => {
+            const parentRow = index < splitIndex ? topRow : bottomRow
+            if (frontEndPlayers[id].lives > 0){
+            createContainer(id, parentRow);
+            createGrid(gridRow, id);
+            }
+            else{
+                createContainer(id, parentRow);
+                createGrid(gridRow, id);
+                const container = document.querySelector('.grid[data-id="' + id + '"]');
+    container.innerHTML = ''; // Clear the grid container
+    const size = screen.clientHeight / 2 - 50 + 'px';
+    
+    container.style.width = size + 'px'; // Set the width of the grid container
+    container.style.height = size + 'px'; // Set the height of
+    
+    container.textContent = 'UDEAD!'; // Display "You Lost!" message
+    container.style.fontSize = '48px'; // Increase font size for visibility
+    container.style.color = 'red'; // Set text color to red
+    container.style.alignItems = 'center'; // Center the text horizontally
+    container.style.justifyContent = 'center'; // Center the text vertically
+            }
+        });
+    } else {
+        // Single-row layout for 3 or fewer players
+        screen.style.display = 'flex';
+        screen.style.flexDirection = 'row';
+        screen.style.flexWrap = 'wrap';
+        screen.style.justifyContent = 'center';
+        screen.style.alignItems = 'center';
+        screen.style.height = '100vh';
+        screen.style.row = '100vw'
+
+            playerIds.forEach((id) => {
+            if (frontEndPlayers[id].lives > 0){
+            createContainer(id, screen);
+            createGrid(gridRow, id);
+            }
+            else{
+                createContainer(id, screen);
+                createGrid(gridRow, id);
+                const container = document.querySelector('.grid[data-id="' + id + '"]');
+                container.innerHTML = ''; // Clear the grid container
+                const size = screen.clientHeight / 2 - 50 + 'px';
+                
+                container.style.width = size + 'px'; // Set the width of the grid container
+                container.style.height = size + 'px'; // Set the height of
+                
+                container.textContent = 'UDEAD!'; // Display "You Lost!" message
+                container.style.fontSize = '48px'; // Increase font size for visibility
+                container.style.color = 'red'; // Set text color to red
+                container.style.alignItems = 'center'; // Center the text horizontally
+                container.style.justifyContent = 'center'; // Center the text vertically
+            }
+        });
+    } 
+   
+    generateCorrect(socket.id);
+    attach();
+}
 
 socket.on('disconnected', (backEndPlayers, id) => {
     for (const id in frontEndPlayers) {
@@ -141,78 +284,67 @@ socket.on('players', (backEndPlayers, data) => {
     players = Object.keys(backEndPlayers).length; // Update the number of players
     loading();
 });
+socket.on('updateTime' , (time) => {
+    remainingTime = time;
+    let timer = document.querySelectorAll('.timer');
+        timer.forEach((t) => {
+            t.textContent = ' Time Left: ' + time;
+        });
+   
+    });
 
 socket.on('startGame', (players, data) => {
-    screen.style.width = '95vw';
-    screen.style.height = '90vh';
-    
-    screen.style.flexWrap = 'wrap';
-    screen.style.flexDirection = 'row';
-    gridRow = 4;
-    for (const id in frontEndPlayers){
-        frontEndPlayers[id].score = 0;
-        frontEndPlayers[id].cellsClicked = [];
-        frontEndPlayers[id].lives = 3;
-        frontEndPlayers[id].chances = 3;
-        
-    }
-
     setTimeout(() => {
-    screen.innerHTML = ''; // Clear the screen before creating a new grid\
-    for (const id in frontEndPlayers){
-        frontEndPlayers[id].lives = 3;
-        frontEndPlayers[id].cellsClicked = [];
-        frontEndPlayers[id].correctData = [];
-        createContainer(id);
-        createGrid(gridRow, id);
-        frontEndPlayers[id].correctData = structuredClone(data);
-    }
-    generateCorrect(socket.id)
-    attach();
+        renderGameScreen(players, data, 4, true);
     }, 500);
 });
+socket.on('finished', (player, id) => {
+   frontEndPlayers[id].score = player.score;
+    const container = document.querySelector('.grid[data-id="' + id + '"]');
+    container.innerHTML = ''; // Clear the grid container
+    const size = screen.clientHeight / 2 - 50 + 'px';
+    
+    container.style.width = size + 'px'; // Set the width of the grid container
+    container.style.height = size + 'px'; // Set the height of
+    
+    container.textContent = 'DOPADOWN!'; // Display "You Lost!" message
+    container.style.fontSize = '48px'; // Increase font size for visibility
+    container.style.color = 'GREEN'; // Set text color to red
+    container.style.alignItems = 'center'; // Center the text horizontally
+    container.style.justifyContent = 'center'; // Center the text vertically
+});
+
 
 socket.on('nextRound', (player, players, correctData, level, rows) => {
     
     setTimeout (() => {
-    screen.innerHTML = ''; // Clear the screen before creating a new grid\
-    gridRow = rows;
-    frontEndPlayers[player].score = players[player].score;
-    for (const id in frontEndPlayers){
-       
-        frontEndPlayers[id].chances = 3;
-        frontEndPlayers[id].cellsClicked = [];
-        frontEndPlayers[id].correctData = [];
-        createContainer(id);
-        createGrid(gridRow,id);
-        frontEndPlayers[id].correctData = structuredClone(correctData);
-        
-    }
-    generateCorrect(socket.id)
-    attach();
-    console.log(frontEndPlayers[player].correctData);
+        for (const id in players){
+            frontEndPlayers[id].lives = players[id].lives 
+        }
+        frontEndPlayers[player].score = players[player].score;
+        renderGameScreen(players, correctData, rows, false);
     }, 20);
-});
 
-    /*
-    
+
    
-
-    correctData = data;// Ensure correctData is defined
-    generateCorrect();
-    attach();
-    console.log('Correct data:', correctData);
-    console.log('Number of players:', players);
-    console.log('Updated players:', frontEndPlayers);
 });
-*/
 
 socket.on('score', (playerData, id) => {
-    console.log('hello'+id);
+   
     frontEndPlayers[id].lives = playerData.lives; // Update the player's data
     frontEndPlayers[id].score = playerData.score;
     const temp = document.querySelector('.textContainer[data-id="' + id + '"]');
-    temp.textContent = playerData.username + ' Lives: ' + playerData.lives + ' Score: ' + playerData.score ; // Update the text content
+    let p1 = document.createElement('p');
+    let p2 = document.createElement('p');
+    let p3 = document.createElement('p')
+    p3.className = 'timer'
+    p1.textContent = ' Lives: ' + playerData.lives;
+    p2.textContent = ' Score: ' + playerData.score;
+    p3.textContent = ' Time Left: ' + remainingTime;
+    temp.textContent = playerData.username; 
+    temp.appendChild(p1);
+    temp.appendChild(p2);
+    temp.appendChild(p3);
 });
 
 socket.on('update', (backEndPlayers, id) => {
@@ -224,30 +356,32 @@ socket.on('update', (backEndPlayers, id) => {
     list.innerHTML = 'Current Players:'; // Clear existing list items
     
     for(const key of Object.keys(frontEndPlayers)){
-        const listItem = document.createElement('li');
-        if (key === socket.id && frontEndPlayers[key].ready === false) {
-        listItem.textContent = frontEndPlayers[key].username + "(You) - Not Ready";
+            const player = frontEndPlayers[key];
+            const listItem = document.createElement('li');
+
+            if (key === socket.id) {
+                listItem.classList.add('you');
+            }
+
+            const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
+            const statusText = player.ready ? 'Ready' : 'Not Ready';
+            listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span class="${statusClass}">${statusText}</span>`;
+            
+            list.appendChild(listItem);
         }
-        else if (key === socket.id && frontEndPlayers[key].ready === true) {
-            listItem.textContent = frontEndPlayers[key].username + "(You) - Ready";
-        }
-        else if (frontEndPlayers[key].ready === true) {
-            listItem.textContent = frontEndPlayers[key].username + " - Ready";
-        }
-        else{
-            listItem.textContent = frontEndPlayers[key].username + " - Not Ready";
-        }
-        listItem.style.margin = '5px 0'; // Add some space between list items
-        listItem.style.fontSize = '18px'; // Increase font size for better visibility
-        listItem.style.color = 'blue'; // Change text color for better visibility
-        listItem.style.fontWeight = 'bold';
-        listItem.style.textAlign = 'center'; // Center the list items
-         // Style the list items for better visibility  
-        list.appendChild(listItem);
-    }
-    const container = document.querySelector('#container');
+     // Update the ready button state
     const readyButton = document.querySelector('#readyButton');
-    container.appendChild(readyButton);
+    if (readyButton && frontEndPlayers[socket.id]) {
+        if (frontEndPlayers[socket.id].ready) {
+            readyButton.textContent = 'Unready';
+            readyButton.classList.remove('not-ready');
+            readyButton.classList.add('ready');
+        } else {
+            readyButton.textContent = 'Ready Up';
+            readyButton.classList.remove('ready');
+            readyButton.classList.add('not-ready');
+        }
+    }
 });
 socket.on('gameOver', (backEndPlayers) => {
     for (const p in frontEndPlayers){
@@ -339,7 +473,7 @@ socket.on('gameOver', (backEndPlayers) => {
 socket.on('lostGame', (backEndPlayers, player) => {
     const container = document.querySelector('.grid[data-id="' + player + '"]');
     container.innerHTML = ''; // Clear the grid container
-    const size = Math.min(screen.clientWidth, screen.clientHeight) / 2;
+    const size = screen.clientHeight / 2 - 50 + 'px';
     
     container.style.width = size + 'px'; // Set the width of the grid container
     container.style.height = size + 'px'; // Set the height of
@@ -372,11 +506,7 @@ socket.on('cellClicked', (num, player) => {
             cell.style.backgroundColor = 'red'; // Change color to red if incorrect
             frontEndPlayers[player].chances -= 1;
             
-            if (frontEndPlayers[player].chances <= 0 && player === socket.id) {
-                frontEndPlayers[player].lives -= 1;
-                socket.emit('lostGame', frontEndPlayers, player);
-                socket.emit('updateScore', frontEndPlayers[player], player);
-            } 
+           
             
             let allDead = true;
             let deadRound = true;
@@ -390,15 +520,19 @@ socket.on('cellClicked', (num, player) => {
             }
             if(allDead){
                 socket.emit('gameOver', frontEndPlayers);
-                socket.emit('updateScore', frontEndPlayers[player], player);
+                
                 return;
             }
             if (deadRound && player === socket.id){
                 socket.emit('deadRound', player);
-                socket.emit('updateScore', frontEndPlayers[player], player);
-                return;
+                
+                
             }
-           
+            if (frontEndPlayers[player].chances <= 0 && player === socket.id) {
+                frontEndPlayers[player].lives -= 1;
+                socket.emit('lostGame', frontEndPlayers, player);
+                socket.emit('updateScore', frontEndPlayers[player], player);
+            } 
            
         }
         /*
@@ -420,92 +554,113 @@ socket.on('cellClicked', (num, player) => {
 });
        
 function loading(){
-    // 1. Get the container element from the HTML
+    // Clear screen and reset styles for the login view
+    screen.innerHTML = '';
     screen.style.flexDirection = 'column';
     screen.style.alignItems = 'center';
-    const container = document.createElement('div');
-    container.id = 'container';
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
-    container.style.alignItems = 'center';
-    container.style.justifyContent = 'center';
-    // Ensure the screen is in column mode
-    // 2. Create all necessary elements in memory
+    screen.style.justifyContent = 'center';
+
+    // 1. Create the main login container
+    const loginContainer = document.createElement('div');
+    loginContainer.id = 'login-container';
+
+    // 2. Create all necessary elements
     const title = document.createElement('h1');
+    const greetingOutput = document.createElement('p');
+
+    // Username input group
+    const formGroup = document.createElement('div');
+    formGroup.className = 'form-group';
     const userLabel = document.createElement('label');
     const usernameInput = document.createElement('input');
     const submitButton = document.createElement('button');
-    const greetingOutput = document.createElement('p');
 
+    // Player list
+    const listContainer = document.createElement('div');
+    listContainer.id = 'playersList-container';
+    const listTitle = document.createElement('h2');
+    const list = document.createElement('ul');
+    
+    // Ready button
+    let readyButton = document.createElement('button');
 
     // 3. Configure the elements
-    title.textContent = 'LOGIN!';
+    title.textContent = 'MemTest';
+    greetingOutput.id = 'greeting';
 
-    userLabel.textContent = 'Username:';
-    userLabel.htmlFor = 'usernameInput'; // Links label to input for accessibility
+    userLabel.textContent = 'Enter Your Username';
+    userLabel.htmlFor = 'usernameInput';
 
     usernameInput.type = 'text';
     usernameInput.id = 'usernameInput';
-    usernameInput.placeholder = 'e.g., user123';
+    usernameInput.placeholder = 'e.g., PlayerOne';
+    // Set current username if it exists
+    if (frontEndPlayers[socket.id] && frontEndPlayers[socket.id].username !== 'Guest') {
+        usernameInput.value = frontEndPlayers[socket.id].username;
+        greetingOutput.textContent = `Welcome back, ${frontEndPlayers[socket.id].username}!`;
+    } else {
+        greetingOutput.textContent = 'Please enter a username to begin.';
+    }
 
-    submitButton.textContent = 'Submit';
+    submitButton.textContent = 'Set Username';
+    submitButton.id = 'submit-button';
 
-    greetingOutput.id = 'greeting';
-
-    const list = document.createElement('ul');
     list.id = 'playersList';
-    list.style.listStyleType = 'none'; // Remove default list styling
-    list.style.padding = '0'; // Remove default padding
-    list.style.marginTop = '20px'; // Add some space above the list for better visibility  
-    list.textContent = 'Current Players:';
-    list.textAlign = 'center'; // Center the list title
+    listTitle.textContent = 'Players in Lobby';
 
-    submitButton.addEventListener('click', () => {
-        const username = usernameInput.value; // Get value from the created input
-        if (username) {
-            greetingOutput.textContent = `Hello, ${username}! 👋`;
-            frontEndPlayers[socket.id].username = username;
-            socket.emit('updatePlayers', frontEndPlayers[socket.id], socket.id);
-        } else {
-            greetingOutput.textContent = 'Please enter a username.';
-            
-        }
-    });
-
+    // Populate player list
     for(const key of Object.keys(frontEndPlayers)){
+        const player = frontEndPlayers[key];
         const listItem = document.createElement('li');
+        
         if (key === socket.id) {
-        listItem.textContent = frontEndPlayers[key].username + "(You)";
+            listItem.classList.add('you');
         }
-        else{
-        listItem.textContent = frontEndPlayers[key].username;
-        }
-        listItem.style.margin = '5px 0'; // Add some space between list items
-        listItem.style.fontSize = '18px'; // Increase font size for better visibility
-        listItem.style.color = 'blue'; // Change text color for better visibility
-        listItem.style.fontWeight = 'bold';
-        listItem.style.textAlign = 'center'; // Center the list items
-         // Style the list items for better visibility  
+
+        const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
+        const statusText = player.ready ? 'Ready' : 'Not Ready';
+        listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span class="${statusClass}">${statusText}</span>`;
+        
         list.appendChild(listItem);
     }
 
-    readyButton = document.createElement('button');
     readyButton.id = 'readyButton';
-    readyButton.textContent = 'Ready';
-    readyButton.addEventListener('click', () => {
-        if (frontEndPlayers[socket.id].ready === false) {
-            frontEndPlayers[socket.id].ready = true;
-            console.log(frontEndPlayers[socket.id]);
-            socket.emit('ready', frontEndPlayers[socket.id], socket.id);
-        }
-        else{
-            frontEndPlayers[socket.id].ready = false;
-            socket.emit('ready', frontEndPlayers[socket.id], socket.id);
+    // Update ready button text and style based on current state
+    if (frontEndPlayers[socket.id] && frontEndPlayers[socket.id].ready) {
+        readyButton.textContent = 'Unready';
+        readyButton.classList.add('ready');
+    } else {
+        readyButton.textContent = 'Ready Up';
+        readyButton.classList.add('not-ready');
+    }
+
+    // 4. Define event listeners
+    submitButton.addEventListener('click', () => {
+        const username = usernameInput.value.trim();
+        if (username) {
+            greetingOutput.textContent = `Username set to: ${username}! 👋`;
+            frontEndPlayers[socket.id].username = username;
+            socket.emit('updatePlayers', frontEndPlayers[socket.id], socket.id);
+        } else {
+            greetingOutput.textContent = 'Please enter a valid username.';
         }
     });
-    // 4. Define what happens when the button is clicked
     
+    usernameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            submitButton.click();
+        }
+    });
+
+    readyButton.addEventListener('click', () => {
+        frontEndPlayers[socket.id].ready = !frontEndPlayers[socket.id].ready;
+        socket.emit('ready', frontEndPlayers[socket.id], socket.id);
+    });
     
-    container.append(title, userLabel, usernameInput, submitButton, greetingOutput, list, readyButton); // 4. Append all elements to the container
-    screen.appendChild(container); // 5. Append the container to the screen
+    // 5. Append elements to build the structure
+    formGroup.append(userLabel, usernameInput);
+    listContainer.append(listTitle, list);
+    loginContainer.append(title, greetingOutput, formGroup, submitButton, listContainer, readyButton);
+    
+    screen.appendChild(loginContainer);
 }
