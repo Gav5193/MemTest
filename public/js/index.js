@@ -145,17 +145,17 @@ function renderPlayerGrid(id, parentElement, gridRow) {
     if (frontEndPlayers[id].lives > 0) {
         createGrid(gridRow, id);
     } else {
+        createGrid(gridRow,id);
         const container = document.querySelector('.grid[data-id="' + id + '"]');
-        const deadMessage = document.createElement('div');
-        deadMessage.className = 'grid'; // Use grid class for sizing
-        deadMessage.textContent = 'UDEAD!';
-        deadMessage.style.color = 'red';
-        deadMessage.style.fontSize = '3rem';
-        deadMessage.style.display = 'flex';
-        deadMessage.style.alignItems = 'center';
-        deadMessage.style.justifyContent = 'center';
-        deadMessage.style.textAlign = 'center';
-        container.appendChild(deadMessage);
+        container.innerHTML = ''; // Clear the grid container
+   
+    
+    container.textContent = 'UDEAD!'; // Display "You Lost!" message
+    container.style.fontSize = '32px'; // Increase font size for visibility
+    container.style.color = 'red'; // Set text color to red
+    container.style.alignItems = 'center'; // Center the text horizontally
+    container.style.justifyContent = 'center'; // Center the text vertically
+    container.style.textAlign = 'center';
     }
 }
 
@@ -167,15 +167,15 @@ socket.on('disconnected', (backEndPlayers, id) => {
     }
      const container = document.querySelector('.grid[data-id="' + id + '"]');
      container.innerHTML = '';
-        const deadMessage = document.createElement('div');
-        deadMessage.className = 'grid'; // Use grid class for sizing
-        deadMessage.textContent = 'RAN!';
-        deadMessage.style.color = 'red';
-        deadMessage.style.fontSize = '3rem';
-        deadMessage.style.display = 'flex';
-        deadMessage.style.alignItems = 'center';
-        deadMessage.style.justifyContent = 'center';
-        container.appendChild(deadMessage);
+         container.innerHTML = ''; // Clear the grid container
+   
+    
+    container.textContent = 'RAN!'; // Display "You Lost!" message
+    container.style.fontSize = '32px'; // Increase font size for visibility
+    container.style.color = 'red'; // Set text color to red
+    container.style.alignItems = 'center'; // Center the text horizontally
+    container.style.justifyContent = 'center'; // Center the text vertically
+    container.style.textAlign = 'center';
 });
 socket.on('home', (backEndPlayers, data) => {
 
@@ -363,10 +363,7 @@ socket.on('gameOver', (backEndPlayers) => {
 socket.on('lostGame', (backEndPlayers, player) => {
     const container = document.querySelector('.grid[data-id="' + player + '"]');
     container.innerHTML = ''; // Clear the grid container
-    const size = container.clientHeight / 2 - 50 + 'px';
-    
-    container.style.width = size + 'px'; // Set the width of the grid container
-    container.style.height = size + 'px'; // Set the height of
+   
     
     container.textContent = 'UTRASH!'; // Display "You Lost!" message
     container.style.fontSize = '32px'; // Increase font size for visibility
