@@ -24,6 +24,7 @@ function createContainer(id, parentElement){
     temp.className = 'text-container';
     temp.dataset.id = id;
 
+    const p0 = document.createElement('p');
     const p1 = document.createElement('p');
     const p2 = document.createElement('p');
     const p3 = document.createElement('p');
@@ -31,14 +32,15 @@ function createContainer(id, parentElement){
 
     if (socket.id === id){
         gridContainer.classList.add('is-you');
-        p1.textContent = frontEndPlayers[id].username + " (YOU)";
+        p0.textContent = frontEndPlayers[id].username + " (YOU)";
     } else {
-        p1.textContent = frontEndPlayers[id].username;
+        p0.textContent = frontEndPlayers[id].username;
     }
-        
-    p2.textContent = 'Lives: ' + frontEndPlayers[id].lives;
-    p3.textContent = 'Score: ' + frontEndPlayers[id].score;
     
+    p1.textContent = 'Lives: ' + frontEndPlayers[id].lives;
+    p2.textContent = 'Score: ' + frontEndPlayers[id].score;
+    
+    temp.appendChild(p0)
     temp.appendChild(p1);
     temp.appendChild(p2);
     temp.appendChild(p3);
@@ -52,7 +54,9 @@ function createGrid(x,id) {
     const grid = document.createElement('div');
     grid.className = 'grid';
     grid.dataset.id= id;
-    
+    var length = Object.keys(frontEndPlayers).length;
+    var size = Math.min(gridContainer.clientHeight * 0.9, (screen.clientWidth / (length <= 3 ? length : Math.ceil(length / 2)) * 0.6));
+    grid.style.width = size + 'px';
     gridContainer.appendChild(grid);
     
     for (let i = 0; i < x; i++) {
@@ -91,7 +95,7 @@ function generateCorrect(id) {
     }, 3000);
 }
 
-function renderGameScreen(players, data, gridRow, isNewGame = false) {
+function renderGameScreen(players, data, gridRow, isNewGame ) {
     screen.innerHTML = '';
 
     const playerIds = Object.keys(players);
@@ -141,7 +145,7 @@ function renderPlayerGrid(id, parentElement, gridRow) {
     if (frontEndPlayers[id].lives > 0) {
         createGrid(gridRow, id);
     } else {
-        const container = document.querySelector('.grid-container[data-id="' + id + '"]');
+        const container = document.querySelector('.grid[data-id="' + id + '"]');
         const deadMessage = document.createElement('div');
         deadMessage.className = 'grid'; // Use grid class for sizing
         deadMessage.textContent = 'UDEAD!';
@@ -150,6 +154,7 @@ function renderPlayerGrid(id, parentElement, gridRow) {
         deadMessage.style.display = 'flex';
         deadMessage.style.alignItems = 'center';
         deadMessage.style.justifyContent = 'center';
+        deadMessage.style.textAlign = 'center';
         container.appendChild(deadMessage);
     }
 }
@@ -160,8 +165,19 @@ socket.on('disconnected', (backEndPlayers, id) => {
             delete frontEndPlayers[id];
         }
     }
+     const container = document.querySelector('.grid[data-id="' + id + '"]');
+     container.innerHTML = '';
+        const deadMessage = document.createElement('div');
+        deadMessage.className = 'grid'; // Use grid class for sizing
+        deadMessage.textContent = 'RAN!';
+        deadMessage.style.color = 'red';
+        deadMessage.style.fontSize = '3rem';
+        deadMessage.style.display = 'flex';
+        deadMessage.style.alignItems = 'center';
+        deadMessage.style.justifyContent = 'center';
+        container.appendChild(deadMessage);
 });
-socket.on('players', (backEndPlayers, data) => {
+socket.on('home', (backEndPlayers, data) => {
 
     screen.innerHTML = ''; // Clear the screen before creating a new grid\
     var i = 1;
@@ -178,6 +194,7 @@ socket.on('players', (backEndPlayers, data) => {
         if(!backEndPlayers[id]){
             delete frontEndPlayers[id];
         }
+        
     }
     players = Object.keys(backEndPlayers).length; // Update the number of players
     loading();
@@ -193,14 +210,14 @@ socket.on('updateTime' , (time) => {
 
 socket.on('startGame', (players, data) => {
     setTimeout(() => {
-        renderGameScreen(players, data, 4, true);
+        renderGameScreen(players, data, 5, true);
     }, 500);
 });
 socket.on('finished', (player, id) => {
    frontEndPlayers[id].score = player.score;
     const container = document.querySelector('.grid[data-id="' + id + '"]');
     container.innerHTML = ''; // Clear the grid container
-    const size = screen.clientHeight / 2 - 50 + 'px';
+    const size = container.clientHeight / 2 - 50 + 'px';
     
     container.style.width = size + 'px'; // Set the width of the grid container
     container.style.height = size + 'px'; // Set the height of
@@ -213,14 +230,23 @@ socket.on('finished', (player, id) => {
 });
 
 
-socket.on('nextRound', (player, players, correctData, level, rows) => {
+socket.on('nextRound', (player, players, correctData, level, rows, newGame) => {
+
     
     setTimeout (() => {
         for (const id in players){
             frontEndPlayers[id].lives = players[id].lives 
         }
+        if (frontEndPlayers[player]){
+            console.log('hello')
         frontEndPlayers[player].score = players[player].score;
-        renderGameScreen(players, correctData, rows, false);
+        if (newGame){
+            renderGameScreen(players, correctData, 5, true);
+        }
+        else{
+            renderGameScreen(players, correctData, rows, false);
+        }
+        }
     }, 20);
 
 
@@ -229,17 +255,26 @@ socket.on('nextRound', (player, players, correctData, level, rows) => {
 
 socket.on('score', (playerData, id) => {
    
+    
     frontEndPlayers[id].lives = playerData.lives; // Update the player's data
     frontEndPlayers[id].score = playerData.score;
     const temp = document.querySelector('.text-container[data-id="' + id + '"]');
+    temp.textContent = '';
+    let p0 = document.createElement('p')
     let p1 = document.createElement('p');
     let p2 = document.createElement('p');
     let p3 = document.createElement('p')
     p3.className = 'timer'
+    if (socket.id === id){
+        
+        p0.textContent = frontEndPlayers[id].username + " (YOU)";
+    } else {
+        p0.textContent = frontEndPlayers[id].username;
+    }
     p1.textContent = ' Lives: ' + playerData.lives;
     p2.textContent = ' Score: ' + playerData.score;
     p3.textContent = ' Time Left: ' + remainingTime;
-    temp.textContent = playerData.username; 
+    temp.appendChild(p0);
     temp.appendChild(p1);
     temp.appendChild(p2);
     temp.appendChild(p3);
@@ -328,7 +363,7 @@ socket.on('gameOver', (backEndPlayers) => {
 socket.on('lostGame', (backEndPlayers, player) => {
     const container = document.querySelector('.grid[data-id="' + player + '"]');
     container.innerHTML = ''; // Clear the grid container
-    const size = screen.clientHeight / 2 - 50 + 'px';
+    const size = container.clientHeight / 2 - 50 + 'px';
     
     container.style.width = size + 'px'; // Set the width of the grid container
     container.style.height = size + 'px'; // Set the height of
@@ -338,6 +373,7 @@ socket.on('lostGame', (backEndPlayers, player) => {
     container.style.color = 'red'; // Set text color to red
     container.style.alignItems = 'center'; // Center the text horizontally
     container.style.justifyContent = 'center'; // Center the text vertically
+    container.style.textAlign = 'center';
 });
 socket.on('cellClicked', (num, player) => {
     console.log('Cell clicked:', num);

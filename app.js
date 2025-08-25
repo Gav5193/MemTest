@@ -63,7 +63,7 @@ io.on('connection', (socket) => {
     
     if (!inProgress){
 generateCorrect();
-    io.emit('players', players, correctData);
+    io.emit('home', players, correctData);
     console.log(players);
     console.log(correctData);
     }
@@ -84,12 +84,30 @@ generateCorrect();
         players[p].lives =3;
         players[p].chances = 3;
         }
-        socket.emit('players', players, correctData);
+        socket.emit('home', players, correctData);
     });
     socket.on('disconnect', () => {
         console.log('user disconnected');
         delete players[socket.id];
         io.emit('disconnected', players, socket.id);
+        var dead = true;
+        for (const id in players){
+            if (players[id].finished === false){
+                dead = false;
+            }
+        }
+        if (dead && remainingTime > 50){
+                 clearInterval(roundTimer);
+           startRoundTimer(5);
+  setTimeout(()=>{
+            for (const id in players){
+                console.log('DCload')
+                loadRound(id, false);
+                break;
+            }
+            
+        }, 5000);
+    }
     });
     socket.on('ready', (player, id) => {
         players[id].ready = player.ready;
@@ -102,7 +120,7 @@ generateCorrect();
         }
         if (allReady) {
             inProgress = true;
-            loadRound(id);
+            loadRound(id, true);
         }
         else{
         io.emit('update', players, socket.id);
@@ -129,7 +147,7 @@ generateCorrect();
            startRoundTimer(5);
   setTimeout(()=>{
             
-                loadRound(player);
+                loadRound(player, false);
             
         }, 5000);
         }
@@ -166,7 +184,7 @@ generateCorrect();
            startRoundTimer(5);
   setTimeout(()=>{
             if (allFinished){
-                loadRound(player);
+                loadRound(player, false);
             }
         }, 5000);
         }
@@ -184,7 +202,7 @@ clearInterval(roundTimer);
         startRoundTimer(5);
             setTimeout(() => {
             
-            loadRound(player);
+            loadRound(player, false);
         }, 5000);
         }
         
@@ -201,7 +219,8 @@ clearInterval(roundTimer);
     // Handle other socket events here
 });
 
-function loadRound(player){
+function loadRound(player, isNewGame){
+   
      winner = null;   
      var allDead = true;
      for(const id in players){
@@ -221,6 +240,7 @@ function loadRound(player){
         }
         generateCorrect();
         for (const p in players) {
+           
             players[p].cellsClicked = [];
             players[p].ready = false;
             players[p].chances = 3;
@@ -231,7 +251,7 @@ function loadRound(player){
         timeOut(level, player);
         clearInterval(roundTimer);
         startRoundTimer(23);
-        io.emit('nextRound', player, players, correctData, level, gridRow);
+        io.emit('nextRound', player, players, correctData, level, gridRow, isNewGame);
 }
 
 function finished (){
@@ -246,7 +266,7 @@ function timeOut(preLevel, player){
     setTimeout(() => {
         if (level === preLevel){
             finished();
-            loadRound(player);
+            loadRound(player, false);
         }
     }, 23000);
 }

@@ -158,14 +158,19 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    
     flex-shrink: 1; /* Allow text to shrink if needed */
     min-width: 0;
+    
+    max-width: 35%;
+    word-wrap: break-word;
 }
 
 .grid {
     display: flex;
     flex-wrap: wrap;
-    width: 40vh;
+   
+    
      /* THIS IS THE CRITICAL FIX: Use a percentage of the container's height */
     aspect-ratio: 1 / 1; /* This will make the width match the height */
     border: var(--border-inset);
