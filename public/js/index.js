@@ -82,14 +82,14 @@ function generateCorrect(id) {
 
     setTimeout(() => {
         frontEndPlayers[id].correctData.forEach(index => {
-            const cell = document.querySelectorAll('.newCell[style*="grid-area: ' + index + '"][data-id="' + id + '"]');
+            const cell = document.querySelector('.newCell[style*="grid-area: ' + index + '"][data-id="' + id + '"]');
             if (cell) {
-                cell.forEach(c => {
-                    if (c.style.backgroundColor !== '#0f0'){ // Not correct green
-                        c.style.transition = 'background-color 0.5s ease';
-                        c.style.backgroundColor = '#444'; // Default retro grey
+              
+                    if (cell.style.backgroundColor != '#0f0' || cell.style.backgroundColor != '#f00'){ // Not correct green
+                        cell.style.transition = 'background-color 0.5s ease';
+                        cell.style.backgroundColor = '#444'; // Default retro grey
                     }
-                });
+            
             }
         });
     }, 3000);
