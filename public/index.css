@@ -169,6 +169,7 @@ body {
 .grid {
     display: flex;
     flex-wrap: wrap;
+    text-align: center;
    
     
      /* THIS IS THE CRITICAL FIX: Use a percentage of the container's height */

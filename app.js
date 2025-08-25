@@ -89,6 +89,11 @@ generateCorrect();
     socket.on('disconnect', () => {
         console.log('user disconnected');
         delete players[socket.id];
+        if(Object.keys(players).length === 0){
+            inProgress = false;
+            socket.emit('home', players, correctData);
+            return;
+        }
         io.emit('disconnected', players, socket.id);
         var dead = true;
         for (const id in players){

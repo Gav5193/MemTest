@@ -10,6 +10,7 @@ var gridRow = level; // Number of rows in the grid
 var gridData = []; // Array to hold grid data
 var remainingTime = 0;
 var players = 2;
+var position = 0;
 
 
 const frontEndPlayers = {}
@@ -214,7 +215,10 @@ socket.on('startGame', (players, data) => {
     }, 500);
 });
 socket.on('finished', (player, id) => {
-   frontEndPlayers[id].score = player.score;
+    
+        position ++;
+    
+    frontEndPlayers[id].score = player.score;
     const container = document.querySelector('.grid[data-id="' + id + '"]');
     container.innerHTML = ''; // Clear the grid container
     const size = container.clientHeight / 2 - 50 + 'px';
@@ -222,7 +226,7 @@ socket.on('finished', (player, id) => {
     container.style.width = size + 'px'; // Set the width of the grid container
     container.style.height = size + 'px'; // Set the height of
     
-    container.textContent = 'DOPADOWN!'; // Display "You Lost!" message
+    container.innerHTML = 'DOPADOWN! '+ '<br>Position: ' + position; // Display "You Lost!" message
     container.style.fontSize = '32px'; // Increase font size for visibility
     container.style.color = 'GREEN'; // Set text color to red
     container.style.alignItems = 'center'; // Center the text horizontally
@@ -232,7 +236,7 @@ socket.on('finished', (player, id) => {
 
 socket.on('nextRound', (player, players, correctData, level, rows, newGame) => {
 
-    
+    position = 0; 
     setTimeout (() => {
         for (const id in players){
             frontEndPlayers[id].lives = players[id].lives 
