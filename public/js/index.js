@@ -15,148 +15,88 @@ var players = 2;
 const frontEndPlayers = {}
 
 function createContainer(id, parentElement){
-     // Clear the screen before creating a new grid
     const gridContainer = document.createElement('div');
-    gridContainer.className = 'gridContainer'; // Correctly set the class name
-    gridContainer.style.display = 'flex';
-    gridContainer.style.flexDirection = 'row';
+    gridContainer.className = 'grid-container';
     gridContainer.dataset.id = id;
-    gridContainer.style.border = '2px solid black'; // Add border to the grid container
-    gridContainer.style.justifyContent = 'center';
-    gridContainer.style.alignItems = 'center';
-     // Set width of the grid container
-    // Add properties to center the grid within its container
-    gridContainer.style.flex = '1 1 0';
-   
-    if (parentElement.id != 'screen'){
-        gridContainer.style.height = '100%'
-    }
-    else{
-        gridContainer.style.height = '50vh';
-    }
     
- 
-    var width = 1/Object.keys(frontEndPlayers).length *100;
-    gridContainer.style.width =  width + '%';
-    gridContainer.style.margin = '0px';
-    gridContainer.style.boxSizing = 'border-box';
-    gridContainer.style.alignItems = 'center'; 
 
     const temp = document.createElement('div');
-    temp.className = 'textContainer';
-    temp.dataset.id = id; // Set the data-id attribute
-    console.log(temp.dataset.id);
-    temp.style.textAlign = 'center'; // Center he text
-    temp.style.width = '150px';
-    temp.style.fontSize = '20px'; // Set font size for better visibility
-    temp.style.color = 'black'; // Set text color
-    temp.style.fontWeight = 'bold'; // Make the text bold
-    gridContainer.appendChild(temp); // Append the text container to the grid container
+    temp.className = 'text-container';
+    temp.dataset.id = id;
+
+    const p1 = document.createElement('p');
+    const p2 = document.createElement('p');
+    const p3 = document.createElement('p');
+    p3.className = 'timer';
+
     if (socket.id === id){
-        temp.textContent = frontEndPlayers[id].username + " (YOU) ";
-        gridContainer.style.backgroundColor = 'orange';
+        gridContainer.classList.add('is-you');
+        p1.textContent = frontEndPlayers[id].username + " (YOU)";
+    } else {
+        p1.textContent = frontEndPlayers[id].username;
     }
-    else{
-        temp.textContent = frontEndPlayers[id].username 
-        gridContainer.style.backgroundColor = '#ADD8E6';
-    };
         
-    let p1 = document.createElement('p');
-    let p2 = document.createElement('p')
-    let p3 = document.createElement('p')
-    p3.className = 'timer'
-    p1.textContent = ' Lives: ' + frontEndPlayers[id].lives 
-    p2.textContent = ' Score: ' + frontEndPlayers[id].score;// Add player ID text
-    p3.textContent = ' Time Left: ' + remainingTime;
+    p2.textContent = 'Lives: ' + frontEndPlayers[id].lives;
+    p3.textContent = 'Score: ' + frontEndPlayers[id].score;
+    
     temp.appendChild(p1);
     temp.appendChild(p2);
     temp.appendChild(p3);
-
     
-
+    gridContainer.appendChild(temp);
     parentElement.appendChild(gridContainer);
-
 }
-function createGrid(x,id) {
 
-    
-    const gridContainer = document.querySelector('.gridContainer[data-id="' + id + '"]');
-    // Center the grid container
+function createGrid(x,id) {
+    const gridContainer = document.querySelector('.grid-container[data-id="' + id + '"]');
     const grid = document.createElement('div');
     grid.className = 'grid';
     grid.dataset.id= id;
-    grid.style.display = 'flex';
-    grid.style.flexDirection = 'row';
-    grid.style.flexWrap = 'wrap';
-    grid.style.width = '40vh';
-    grid.style.height = '40vh';
-   
     
-     // Use screen's clientWidth and clientHeight to set grid size
-    const screenWidth = screen.clientWidth;
-    const screenHeight = screen.clientHeight;
-
-    // Make the grid a square that is half the smaller dimension of the screen
-    const gridSize = Math.min(screen.clientHeight, screen.clientWidth) / 1.5; // Adjust size based on number of players
-
-    
-    gridContainer.appendChild(grid); // Append the grid to the grid container
+    gridContainer.appendChild(grid);
     
     for (let i = 0; i < x; i++) {
         for (let j = 0; j < x; j++) {
             const cell = document.createElement('div');
             cell.className = 'newCell';
-            cell.style.width = 1/x * 100 + '%'; // Set width of each cell
-            cell.style.height = 1/x * 100 + "%"; // Set height of each cell
-            cell.style.display = 'inline-block'; // Display cells inline
-            cell.style.border = '1px solid black'; // Add border to cells
-            cell.style.boxSizing = 'border-box'; // Include border in width/height calculations
-            cell.style.backgroundColor = 'grey'; // Set background color for cells
-            cell.style.gridArea = (i * x + j + 1); // Unique identifier for each cell
-            cell.dataset.id = id; // Set the data-index attribute
+            cell.style.width = 1/x * 100 + '%';
+            cell.style.height = 1/x * 100 + "%";
+            cell.style.gridArea = (i * x + j + 1);
+            cell.dataset.id = id;
             grid.appendChild(cell);
         }
     }
 }
 
-
 function generateCorrect(id) {
-    
-     // Highlight correct cells
     frontEndPlayers[id].correctData.forEach(index => {
-        for(let i = 0; i < Object.keys(frontEndPlayers).length; i++){
-            const cell = document.querySelector('.newCell[style*="grid-area: ' + index + '"][data-id="' + id + '"]');
-            console.log(cell);
-            cell.style.backgroundColor = 'yellow'; // Highlight correct cells in yellow
-            
+        const cell = document.querySelector('.newCell[style*="grid-area: ' + index + '"][data-id="' + id + '"]');
+        if (cell) {
+            cell.style.backgroundColor = '#ff0'; // Retro Yellow
         }
     });
 
-    // Fade out after a delay
     setTimeout(() => {
         frontEndPlayers[id].correctData.forEach(index => {
             const cell = document.querySelectorAll('.newCell[style*="grid-area: ' + index + '"][data-id="' + id + '"]');
             if (cell) {
                 cell.forEach(c => {
-                    if (c.style.backgroundColor != 'green'){
-                    c.style.transition = 'background-color 0.5s ease', // Add transition for smooth fading
-                    c.style.backgroundColor = 'grey'
+                    if (c.style.backgroundColor !== '#0f0'){ // Not correct green
+                        c.style.transition = 'background-color 0.5s ease';
+                        c.style.backgroundColor = '#444'; // Default retro grey
                     }
                 });
-                }
-            });
-            
-        
-    }, 3000); // Delay of 3 seconds (3000 milliseconds)
+            }
+        });
+    }, 3000);
 }
 
 function renderGameScreen(players, data, gridRow, isNewGame = false) {
-    screen.innerHTML = ''; // Clear the screen
+    screen.innerHTML = '';
 
     const playerIds = Object.keys(players);
     const playerCount = playerIds.length;
 
-    // Set up player data
     for (const id in players) {
         if (isNewGame) {
             frontEndPlayers[id].score = 0;
@@ -166,94 +106,52 @@ function renderGameScreen(players, data, gridRow, isNewGame = false) {
         frontEndPlayers[id].cellsClicked = [];
         frontEndPlayers[id].correctData = structuredClone(data);
     }
-    console.log(playerCount);
+
     if (playerCount > 3) {
-        // Two-row layout for more than 3 players
-        screen.style.display = 'flex';
-        screen.style.flexDirection = 'column';
-        screen.style.justifyContent = 'center';
-        screen.style.alignItems = 'center';
-        screen.style.height = '100vh';
-        screen.style.width = '100vw'
-
+        screen.className = 'game-screen-two-rows';
         const topRow = document.createElement('div');
-        topRow.style.display = 'flex';
-        topRow.style.justifyContent = 'center';
-        topRow.style.alignItems = 'center';
-        topRow.style.width = '100%';
-        topRow.style.height = '50%'
-
+        topRow.className = 'game-row';
         const bottomRow = document.createElement('div');
-        bottomRow.style.display = 'flex';
-        bottomRow.style.justifyContent = 'center';
-        bottomRow.style.alignItems = 'center';
-        bottomRow.style.width = '100%';
-        bottomRow.style.height = '50%'
-
+        bottomRow.className = 'game-row';
         screen.appendChild(topRow);
         screen.appendChild(bottomRow);
 
         const splitIndex = Math.ceil(playerCount / 2);
-
         playerIds.forEach((id, index) => {
-            const parentRow = index < splitIndex ? topRow : bottomRow
-            if (frontEndPlayers[id].lives > 0){
-            createContainer(id, parentRow);
-            createGrid(gridRow, id);
-            }
-            else{
-                createContainer(id, parentRow);
-                createGrid(gridRow, id);
-                const container = document.querySelector('.grid[data-id="' + id + '"]');
-    container.innerHTML = ''; // Clear the grid container
-    const size = screen.clientHeight / 2 - 50 + 'px';
-    
-    container.style.width = size + 'px'; // Set the width of the grid container
-    container.style.height = size + 'px'; // Set the height of
-    
-    container.textContent = 'UDEAD!'; // Display "You Lost!" message
-    container.style.fontSize = '48px'; // Increase font size for visibility
-    container.style.color = 'red'; // Set text color to red
-    container.style.alignItems = 'center'; // Center the text horizontally
-    container.style.justifyContent = 'center'; // Center the text vertically
-            }
+            const parentRow = index < splitIndex ? topRow : bottomRow;
+            // Render logic for dead/alive players
+            renderPlayerGrid(id, parentRow, gridRow);
         });
     } else {
-        // Single-row layout for 3 or fewer players
-        screen.style.display = 'flex';
         screen.style.flexDirection = 'row';
-        screen.style.flexWrap = 'wrap';
         screen.style.justifyContent = 'center';
         screen.style.alignItems = 'center';
-        screen.style.height = '100vh';
-        screen.style.row = '100vw'
-
-            playerIds.forEach((id) => {
-            if (frontEndPlayers[id].lives > 0){
-            createContainer(id, screen);
-            createGrid(gridRow, id);
-            }
-            else{
-                createContainer(id, screen);
-                createGrid(gridRow, id);
-                const container = document.querySelector('.grid[data-id="' + id + '"]');
-                container.innerHTML = ''; // Clear the grid container
-                const size = screen.clientHeight / 2 - 50 + 'px';
-                
-                container.style.width = size + 'px'; // Set the width of the grid container
-                container.style.height = size + 'px'; // Set the height of
-                
-                container.textContent = 'UDEAD!'; // Display "You Lost!" message
-                container.style.fontSize = '48px'; // Increase font size for visibility
-                container.style.color = 'red'; // Set text color to red
-                container.style.alignItems = 'center'; // Center the text horizontally
-                container.style.justifyContent = 'center'; // Center the text vertically
-            }
+        screen.className = 'game-screen-single-row';
+        playerIds.forEach((id) => {
+            renderPlayerGrid(id, screen, gridRow);
         });
     } 
    
     generateCorrect(socket.id);
     attach();
+}
+
+function renderPlayerGrid(id, parentElement, gridRow) {
+    createContainer(id, parentElement);
+    if (frontEndPlayers[id].lives > 0) {
+        createGrid(gridRow, id);
+    } else {
+        const container = document.querySelector('.grid-container[data-id="' + id + '"]');
+        const deadMessage = document.createElement('div');
+        deadMessage.className = 'grid'; // Use grid class for sizing
+        deadMessage.textContent = 'UDEAD!';
+        deadMessage.style.color = 'red';
+        deadMessage.style.fontSize = '3rem';
+        deadMessage.style.display = 'flex';
+        deadMessage.style.alignItems = 'center';
+        deadMessage.style.justifyContent = 'center';
+        container.appendChild(deadMessage);
+    }
 }
 
 socket.on('disconnected', (backEndPlayers, id) => {
@@ -308,7 +206,7 @@ socket.on('finished', (player, id) => {
     container.style.height = size + 'px'; // Set the height of
     
     container.textContent = 'DOPADOWN!'; // Display "You Lost!" message
-    container.style.fontSize = '48px'; // Increase font size for visibility
+    container.style.fontSize = '32px'; // Increase font size for visibility
     container.style.color = 'GREEN'; // Set text color to red
     container.style.alignItems = 'center'; // Center the text horizontally
     container.style.justifyContent = 'center'; // Center the text vertically
@@ -333,7 +231,7 @@ socket.on('score', (playerData, id) => {
    
     frontEndPlayers[id].lives = playerData.lives; // Update the player's data
     frontEndPlayers[id].score = playerData.score;
-    const temp = document.querySelector('.textContainer[data-id="' + id + '"]');
+    const temp = document.querySelector('.text-container[data-id="' + id + '"]');
     let p1 = document.createElement('p');
     let p2 = document.createElement('p');
     let p3 = document.createElement('p')
@@ -353,7 +251,7 @@ socket.on('update', (backEndPlayers, id) => {
         frontEndPlayers[id].ready = backEndPlayers[id].ready;
     }
     const list = document.querySelector('#playersList');
-    list.innerHTML = 'Current Players:'; // Clear existing list items
+    list.innerHTML = ''; // Clear existing list items
     
     for(const key of Object.keys(frontEndPlayers)){
             const player = frontEndPlayers[key];
@@ -388,83 +286,40 @@ socket.on('gameOver', (backEndPlayers) => {
         frontEndPlayers[p].ready = false;
     }
     screen.innerHTML = '';
- 
-    screen.style.flexDirection = 'column';
-    screen.style.alignItems = 'center';
-    screen.style.justifyContent = 'center';
+
+    screen.className = ''; // Reset screen classes
 
     const leaderboardContainer = document.createElement('div');
-    leaderboardContainer.style.border = '3px solid gold';
-    leaderboardContainer.style.padding = '25px';
-    leaderboardContainer.style.borderRadius = '10px';
-    leaderboardContainer.style.backgroundColor = '#f0f8ff';
-    leaderboardContainer.style.textAlign = 'center';
+    leaderboardContainer.className = 'leaderboard-container';
 
     const title = document.createElement('h1');
-    title.textContent = 'Game Over!';
-    title.style.color = 'navy';
-    leaderboardContainer.appendChild(title);
+    title.textContent = 'Game Over';
 
     const subtitle = document.createElement('h2');
     subtitle.textContent = 'Final Scores';
-    subtitle.style.color = 'darkslategray';
-    subtitle.style.borderBottom = '2px solid navy';
-    subtitle.style.paddingBottom = '10px';
-    subtitle.style.marginBottom = '20px';
-    leaderboardContainer.appendChild(subtitle);
 
     const playersArray = Object.values(backEndPlayers);
     playersArray.sort((a, b) => b.score - a.score);
 
     const playerList = document.createElement('ol');
-    playerList.style.listStyle = 'none';
-    playerList.style.padding = '0';
 
     playersArray.forEach((player, index) => {
         const playerEntry = document.createElement('li');
-        playerEntry.style.fontSize = '20px';
-        playerEntry.style.padding = '10px';
-        playerEntry.style.borderBottom = '1px solid #ccc';
+        let medal = '';
+        if (index === 0) medal = '1ST';
+        else if (index === 1) medal = '2ND';
+        else if (index === 2) medal = '3RD';
+        else medal = `${index + 1}TH`;
         
-        if (index === 0) { // Highlight the winner
-            playerEntry.style.fontWeight = 'bold';
-            playerEntry.style.color = 'green';
-            playerEntry.textContent = `🥇 1. ${player.username} - ${player.score} points`;
-        } else if (index === 1) {
-            playerEntry.style.color = 'saddlebrown';
-            playerEntry.textContent = `🥈 ${index + 1}. ${player.username} - ${player.score} points`;
-        } else if (index === 2) {
-            playerEntry.style.color = 'darkgray';
-            playerEntry.textContent = `🥉 ${index + 1}. ${player.username} - ${player.score} points`;
-        } else {
-            playerEntry.textContent = `${index + 1}. ${player.username} - ${player.score} points`;
-        }
-
-        if (index === playersArray.length - 1) {
-            playerEntry.style.borderBottom = 'none';
-        }
-
+        playerEntry.textContent = `${medal} ${player.username} - ${player.score}`;
         playerList.appendChild(playerEntry);
     });
 
-    leaderboardContainer.appendChild(playerList);
-
-       const homeButton = document.createElement('button');
+    const homeButton = document.createElement('button');
     homeButton.textContent = 'Return to Home';
-    homeButton.style.marginTop = '20px';
-    homeButton.style.padding = '10px 20px';
-    homeButton.style.fontSize = '16px';
-    homeButton.style.cursor = 'pointer';
-    homeButton.style.border = 'none';
-    homeButton.style.borderRadius = '5px';
-    homeButton.style.backgroundColor = 'navy';
-    homeButton.style.color = 'white';
+    homeButton.addEventListener('click', () => socket.emit('goHome'));
 
-    homeButton.addEventListener('click', () => {
-        socket.emit('goHome');
-    });
-
-    leaderboardContainer.appendChild(homeButton);
+    leaderboardContainer.append(title, subtitle, playerList, homeButton);
     screen.appendChild(leaderboardContainer);
 
     });
@@ -479,7 +334,7 @@ socket.on('lostGame', (backEndPlayers, player) => {
     container.style.height = size + 'px'; // Set the height of
     
     container.textContent = 'UTRASH!'; // Display "You Lost!" message
-    container.style.fontSize = '48px'; // Increase font size for visibility
+    container.style.fontSize = '32px'; // Increase font size for visibility
     container.style.color = 'red'; // Set text color to red
     container.style.alignItems = 'center'; // Center the text horizontally
     container.style.justifyContent = 'center'; // Center the text vertically
@@ -492,7 +347,7 @@ socket.on('cellClicked', (num, player) => {
     if (cell && !(frontEndPlayers[player].cellsClicked.includes(num))) {
         frontEndPlayers[player].cellsClicked.push(num);
         if (frontEndPlayers[player].correctData.includes(num) ) {
-            cell.style.backgroundColor = 'green'; // Change color to green if correct
+            cell.style.backgroundColor = '#0f0'; // Change color to green if correct
             frontEndPlayers[player].correct += 1;
             frontEndPlayers[player].correctData.splice(frontEndPlayers[player].correctData.indexOf(num), 1); // Remove the number from correctData
             frontEndPlayers[player].score += 10;
@@ -503,7 +358,7 @@ socket.on('cellClicked', (num, player) => {
             }
             
         } else {
-            cell.style.backgroundColor = 'red'; // Change color to red if incorrect
+            cell.style.backgroundColor = '#f00'; // Change color to red if incorrect
             frontEndPlayers[player].chances -= 1;
             
            

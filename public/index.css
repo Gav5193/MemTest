@@ -12,11 +12,15 @@
 }
 
 body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     margin: 0;
     font-family: var(--font-retro);
     background-color: var(--color-background);
     color: var(--color-text);
     image-rendering: pixelated; /* Keeps fonts sharp */
+    height: 100vh;
 }
 
 #screen {
@@ -108,6 +112,7 @@ body {
 /* --- Game Screen --- */
 .game-screen-single-row, .game-screen-two-rows {
     display: flex;
+    flex-direction: row;
     justify-content: center;
     align-items: center;
     width: 100%;
@@ -129,14 +134,18 @@ body {
     border: var(--border-retro);
     flex: 1 1 0;
     height: 95%;
-    margin: 10px;
+    margin: 10px; /* Add a small margin for spacing */
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     justify-content: space-around;
     align-items: center;
-    padding: 10px;
+    justify-content: center;
+    padding: 20px;
     box-sizing: border-box;
+    gap: 20px;
+    min-width: 0; /* Add this to allow flex items to shrink properly */
 }
+
 
 .grid-container.is-you {
     border-color: var(--color-secondary);
@@ -144,16 +153,23 @@ body {
 
 .text-container {
     text-align: center;
-    font-size: 0.8rem;
-    line-height: 1.5;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex-shrink: 1; /* Allow text to shrink if needed */
+    min-width: 0;
 }
 
 .grid {
     display: flex;
     flex-wrap: wrap;
-    width: 80%;
-    aspect-ratio: 1 / 1;
+    width: 40vh;
+     /* THIS IS THE CRITICAL FIX: Use a percentage of the container's height */
+    aspect-ratio: 1 / 1; /* This will make the width match the height */
     border: var(--border-inset);
+    flex-shrink: 0; /* Prevent the grid itself from shrinking */
 }
 
 .newCell {

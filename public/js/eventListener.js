@@ -8,6 +8,7 @@ setTimeout(() => {
 click.forEach(cell => {
 
     cell.addEventListener('click', () => {
+        console.log('cell was clicked' + socket.id )
             /*
             if (correctData.includes(parseInt(cell.style.gridArea))) {
                 cell.style.backgroundColor = 'green'; // Change color to green if correct
