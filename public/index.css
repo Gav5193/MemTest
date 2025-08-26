@@ -55,7 +55,8 @@ body {
     color: var(--color-highlight);
 }
 
-.form-group label {
+.username-group label {
+
     display: none; /* Hide label for a cleaner look */
 }
 

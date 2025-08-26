@@ -1,24 +1,65 @@
 
-var level = 5;
-
-const socket = io({ autoConnect: true }); // Connect to the server
+const socket = io({ autoConnect: false }); // Connect to the server
 
 const screen = document.querySelector('#screen');
 
 var gridRow = level; // Number of rows in the grid
 
-var gridData = []; // Array to hold grid data
+var level;
 var remainingTime = 0;
-var players = 2;
+
 var position = 0;
+
+
+var yourUsername = ''
+
+
+var state = "";
 
 
 const frontEndPlayers = {}
 
 
 
-function home() {
-    // Clear screen and reset styles for the login view
+function multiplayer(){
+   
+    container();
+    const title = document.createElement('h1');
+    title.textContent = 'Multiplayer'
+    const loginContainer = document.querySelector('#login-container')
+    loginContainer.append(title);
+
+
+    const tenButton = document.createElement('button')
+    const twentyButton = document.createElement('button')
+    const endlessButton = document.createElement('button')
+    
+    tenButton.textContent= "First to Level 10"
+    twentyButton.textContent= "First to Level 20"
+    endlessButton.textContent = "Endless Mode"
+
+
+    tenButton.addEventListener('click', () => {
+        
+            multiLobby('ten')
+        
+   });
+
+   twentyButton.addEventListener('click', () => {
+        
+            multiLobby('twenty')
+            
+   });
+
+    endlessButton.addEventListener('click', () => {
+        
+            multiLobby('endless');
+        
+   });
+   loginContainer.append(tenButton,twentyButton,endlessButton)
+    
+}
+function container(){
     screen.innerHTML = '';
     screen.style.flexDirection = 'column';
     screen.style.alignItems = 'center';
@@ -30,19 +71,22 @@ function home() {
 
     // 2. Create all necessary elements
     const title = document.createElement('h1');
+    title.textContent = 'MemTest'
+    loginContainer.append(title);
+    screen.appendChild(loginContainer)
+}
+
+function getUsername(){
+
+    const loginContainer = document.querySelector("#login-container")
+
     const greetingOutput = document.createElement('p');
 
-    // Username input group
     const formGroup = document.createElement('div');
-    formGroup.className = 'form-group';
+    formGroup.className = 'username-group';
     const userLabel = document.createElement('label');
     const usernameInput = document.createElement('input');
     const submitButton = document.createElement('button');
-
-  
-
-    // 3. Configure the elements
-    title.textContent = 'MemTest';
     greetingOutput.id = 'greeting';
 
     userLabel.textContent = 'Enter Your Username';
@@ -52,42 +96,79 @@ function home() {
     usernameInput.id = 'usernameInput';
     usernameInput.placeholder = 'e.g., PlayerOne';
     // Set current username if it exists
-    if (frontEndPlayers[socket.id] && frontEndPlayers[socket.id].username !== 'Guest') {
-        usernameInput.value = frontEndPlayers[socket.id].username;
-        greetingOutput.textContent = `Welcome back, ${frontEndPlayers[socket.id].username}!`;
-    } else {
+    
         greetingOutput.textContent = 'Please enter a username to begin.';
-    }
-
+    
     submitButton.textContent = 'Set Username';
     submitButton.id = 'submit-button';
 
       // 4. Define event listeners
     submitButton.addEventListener('click', () => {
-        const username = usernameInput.value.trim();
-        if (username) {
-            greetingOutput.textContent = `Username set to: ${username}! 👋`;
-            frontEndPlayers[socket.id].username = username;
-            socket.emit('updateUsername', frontEndPlayers[socket.id], socket.id);
-            window.location.href = '/test';
+        yourUsername = usernameInput.value.trim();
+        sessionStorage.setItem('username', yourUsername);
+        console.log(yourUsername)
+        if (yourUsername) {
+            greetingOutput.textContent = `Username set to: ${yourUsername}! 👋`;
+            
+       
         } else {
             greetingOutput.textContent = 'Please enter a valid username.';
         }
     });
-
     usernameInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             submitButton.click();
         }
     });
 
+    formGroup.append(userLabel, usernameInput);
+    loginContainer.append(greetingOutput, formGroup, submitButton)
+}
+function home() {
+
+    container();
+    getUsername();
+
+    const loginContainer = document.querySelector("#login-container")
+    console.log(loginContainer)
+    
+    const greetingOutput = document.createElement('p');
+    
+
+    // play option group
+    
+    const singleButton = document.createElement('button')
+    const multiButton = document.createElement('button')
+
+    
+    singleButton.textContent="Singleplayer Mode"
+    multiButton.textContent="Multiplayer Mode"
+    singleButton.addEventListener('click', () => {
+        if (yourUsername != ''){
+            window.location.href = '/singleplayer';
+        }
+       
+   });
+
+   multiButton.addEventListener('click', () => {
+        if (yourUsername != ''){
+            window.location.href = '/multiplayer';
+        }
+       
+   });
+
 
     // 5. Append elements to build the structure
-    formGroup.append(userLabel, usernameInput);
-    loginContainer.append(title, greetingOutput, formGroup, submitButton);
-    screen.appendChild(loginContainer);
+    
+    loginContainer.append(singleButton, multiButton);
 }
-function multiplayerLoading() {
+function multiLobby(mode) {
+    socket.connect()
+    if(!frontEndPlayers[socket.id]){
+        socket.emit('Lobby', mode);
+        //frontEndPlayers[socket.id].username = sessionStorage.getItem('username');
+        socket.emit('updateUsername', frontEndPlayers[socket.id], mode);
+    }
     // Clear screen and reset styles for the login view
     screen.innerHTML = '';
     screen.style.flexDirection = 'column';
@@ -104,7 +185,8 @@ function multiplayerLoading() {
 
     // Username input group
     const formGroup = document.createElement('div');
-    formGroup.className = 'form-group';
+    formGroup.className = 'username-group';
+    
     const userLabel = document.createElement('label');
     const usernameInput = document.createElement('input');
     const submitButton = document.createElement('button');
@@ -119,7 +201,8 @@ function multiplayerLoading() {
     let readyButton = document.createElement('button');
 
     // 3. Configure the elements
-    title.textContent = 'MemTest';
+    title.textContent = 'MemTest' + state;
+    
     greetingOutput.id = 'greeting';
 
     userLabel.textContent = 'Enter Your Username';
@@ -174,8 +257,8 @@ function multiplayerLoading() {
         if (username) {
             greetingOutput.textContent = `Username set to: ${username}! 👋`;
             frontEndPlayers[socket.id].username = username;
-            socket.emit('updateUsername', frontEndPlayers[socket.id], socket.id);
-            window.location.href = '/test';
+            socket.emit('updateUsername', frontEndPlayers[socket.id], mode);
+       
         } else {
             greetingOutput.textContent = 'Please enter a valid username.';
         }
@@ -365,14 +448,14 @@ socket.on('disconnected', (backEndPlayers, id) => {
     container.style.justifyContent = 'center'; // Center the text vertically
     container.style.textAlign = 'center';
 });
-socket.on('home', (backEndPlayers, data) => {
+socket.on('Lobby', (backEndPlayers, mode) => {
 
     screen.innerHTML = ''; // Clear the screen before creating a new grid\
     var i = 1;
     for (const id in backEndPlayers) {
         const backEndPlayer = backEndPlayers[id];
         if (!frontEndPlayers[id]) {
-            frontEndPlayers[id] = new Player(0, 0, 3, backEndPlayer.username, id);
+            frontEndPlayers[id] = new Player(0, 0, 3, backEndPlayer.username, id, mode);
         }
         else {
             frontEndPlayers[id].username = backEndPlayers[id].username;
@@ -384,8 +467,8 @@ socket.on('home', (backEndPlayers, data) => {
         }
 
     }
-    players = Object.keys(backEndPlayers).length; // Update the number of players
-    multiplayerLoading();
+    
+    multiLobby(mode); 
 });
 socket.on('updateTime', (time) => {
     remainingTime = time;
@@ -542,7 +625,7 @@ socket.on('gameOver', (backEndPlayers) => {
 
     const homeButton = document.createElement('button');
     homeButton.textContent = 'Return to Home';
-    homeButton.addEventListener('click', () => socket.emit('goHome'));
+    homeButton.addEventListener('click', () => socket.emit('Lobby', frontEndPlayers[socket.id].mode));
 
     leaderboardContainer.append(title, subtitle, playerList, homeButton);
     screen.appendChild(leaderboardContainer);

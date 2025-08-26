@@ -1,4 +1,5 @@
 const express = require('express');
+const { appendFileSync } = require('fs');
 const app = express();
 
 const http = require('http');
@@ -16,11 +17,19 @@ var gridRow = 4; // Number of rows in the grid
 const port = 3000;
 var playerLength = 1;
 var playerNum = 0;
-var inProgress = false;
 var winner = null;
 var remainingTime = 0;
 
+const inProgress = {
+    "endless": false,
+    "ten": false,
+    "twenty": false
+}
+
 const players = {
+    "endless": {},
+    "ten": {},
+    "twenty": {}
 }
 var correctData = [];
 
@@ -44,7 +53,15 @@ function generateCorrect() {
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
-    res.render('endless');
+    res.render('home');
+});
+
+app.get('/multiplayer', (req, res)=>{
+    res.render('multiplayer');
+});
+
+app.get('/endlessMode' , (req,res)=>{
+    res.render('endlessMulti');
 });
 
 server.listen(
@@ -54,43 +71,31 @@ server.listen(
     }
 )
 io.on('connection', (socket) => {
-    level = 1;
-    gridRow = 4;
-    console.log('a user connected');
-    players[socket.id] = {
-        score: 0,
-        cellsClicked: [],
-        lives: 3,
-        chances: 3,
-        username: 'Guest',
-        ready: false,
-        finished: false
-    }
 
-    if (!inProgress) {
+      
 
-        io.emit('home', players, correctData);
-        console.log(players);
-        console.log(correctData);
-    }
-
-
-    socket.on('updateUsername', (player, id) => {
+    socket.on('updateUsername', (player, mode) => {
         console.log('Updating player:', player);
-        players[id].username = player.username;
+        players[mode][socket.id].username = player.username;
         io.emit('update', players, socket.id);
     });
-    socket.on('goHome', () => {
+    socket.on('Lobby', (mode) => {
         level = 1;
         gridRow = 4;
+        if (inProgress[mode]===false){
+        players[mode][socket.id] = {
+            score: 0,
+            cellsClicked: [],
+            lives: 3,
+            chances: 3,
+            username: 'Guest',
+            ready: false,
+            finished: false,
+            mode: mode
+        }}
 
-        players[socket.id].ready = false;
-        players[socket.id].score = 0;
-        players[socket.id].cellsClicked = [];
-        players[socket.id].lives = 3;
-        players[socket.id].chances = 3;
-
-        socket.emit('home', players, correctData);
+        socket.join(mode);
+        socket.emit('Lobby', players[mode], mode);
     });
     socket.on('disconnect', () => {
         console.log('user disconnected');
@@ -230,7 +235,12 @@ io.on('connection', (socket) => {
                 }
             }
             if (allDead) {
-                io.emit('gameOver', player);
+                for (const p in players) {
+            players[p].ready = false;
+        }
+        clearInterval(roundTimer);
+        inProgress = false;
+        io.emit('gameOver', players);
                 return;
             }
             if (deadRound && player === socket.id) {
@@ -246,7 +256,24 @@ io.on('connection', (socket) => {
             }
             if (players[player].chances <= 0) {
 
-                io.emit('lostGame', players, player);
+                 players[player].finished = true;
+        console.log('Game lost by:', player);
+        var dead = true;
+        for (const id in players) {
+            if (players[id].finished === false) {
+                dead = false;
+            }
+        }
+        if (dead && remainingTime > 30) {
+            clearInterval(roundTimer);
+            startRoundTimer(3);
+            setTimeout(() => {
+
+                loadRound(player, false);
+
+            }, 3000);
+        }
+        io.emit('lostGame', players, player);
                 io.emit('score', players[player], player);
             }
 

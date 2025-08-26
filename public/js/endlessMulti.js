@@ -1,0 +1,2 @@
+state = ' Endless Mode'
+endlessMulti();

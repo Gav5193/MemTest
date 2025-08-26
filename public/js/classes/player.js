@@ -1,5 +1,5 @@
 class Player {
-    constructor(score, correct, lives, username, num){
+    constructor(score, correct, lives, username, num, mode){
         this.score = score;
         this.correct = correct;
         this.lives = lives;
@@ -9,5 +9,6 @@ class Player {
         this.correctData = [];
         this.playerNumber = num;
         this.ready = false;
+        this.mode = mode;
     }
 }
