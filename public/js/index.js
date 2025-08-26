@@ -107,7 +107,10 @@ function renderGameScreen(players, data, gridRow, isNewGame ) {
             frontEndPlayers[id].score = 0;
             frontEndPlayers[id].lives = 3;
         }
-        frontEndPlayers[id].chances = 3;
+        if (frontEndPlayers[id].lives>0){
+            frontEndPlayers[id].chances = 3;
+        }
+        
         frontEndPlayers[id].cellsClicked = [];
         frontEndPlayers[id].correctData = structuredClone(data);
     }

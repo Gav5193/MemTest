@@ -77,13 +77,13 @@ generateCorrect();
     socket.on('goHome' , () => {
         level = 1;
         gridRow = 4;
-        for(const p in players){
-        players[p].ready = false;
-        players[p].score = 0;
-        players[p].cellsClicked = [];
-        players[p].lives =3;
-        players[p].chances = 3;
-        }
+        
+        players[socket.id].ready = false;
+        players[socket.id].score = 0;
+        players[socket.id].cellsClicked = [];
+        players[socket.id].lives = 3;
+        players[socket.id].chances = 3;
+        
         socket.emit('home', players, correctData);
     });
     socket.on('disconnect', () => {
@@ -248,9 +248,10 @@ function loadRound(player, isNewGame){
            
             players[p].cellsClicked = [];
             players[p].ready = false;
-            players[p].chances = 3;
+           
             if (players[p].lives > 0){
             players[p].finished = false;
+             players[p].chances = 3;
             }
         }
         timeOut(level, player);
@@ -261,7 +262,7 @@ function loadRound(player, isNewGame){
 
 function finished (){
     for (const id in players){
-        if (players[id].finished != true){
+        if (players[id].finished != true && players[id].lives > 0){
             players[id].lives-=1;
         }
     }
