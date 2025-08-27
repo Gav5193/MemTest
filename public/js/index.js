@@ -153,16 +153,10 @@ function multiLobby(mode, isInProgress) {
     let readyButton = document.createElement('button');
     readyButton.id = 'readyButton';
     
-    let statusMessage = document.createElement('p');
-    statusMessage.id = 'statusMessage';
-
-    if (isInProgress) {
-        statusMessage.textContent = 'Game is in progress. Please wait for the next game.';
-        readyButton.style.display = 'none';
-    }
+   
 
     listContainer.append(listTitle, list);
-    lobbyContainer.append(title, lobbyLink, usernameGroup, setUsernameButton, statusMessage, listContainer, readyButton);
+    lobbyContainer.append(title, lobbyLink, usernameGroup, setUsernameButton,  listContainer, readyButton);
     screen.appendChild(lobbyContainer);
 
     readyButton.textContent = 'Ready Up';

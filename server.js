@@ -142,11 +142,12 @@ io.on('connection', (socket) => {
             finished: false,
             mode: roomMode
         };
-        }
+        
         // If the game is in progress, the new player is a spectator.
        
         
         io.to(roomId).emit('updateLobby', players[roomId]);
+    }
         
     });
 
