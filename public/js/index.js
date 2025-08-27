@@ -2,27 +2,19 @@
 const socket = io({ autoConnect: false }); // Connect to the server
 
 const screen = document.querySelector('#screen');
+let currentGameMode = ''; // Global variable to store the current game mode
 
 var gridRow = level; // Number of rows in the grid
-
 var level;
 var remainingTime = 0;
-
 var position = 0;
-
-
-var yourUsername = ''
-
-
+var yourUsername = '';
 var state = "";
+var gameStatus = {};
+const frontEndPlayers = {};
 
-var gameStatus = {}
-const frontEndPlayers = {}
-
-
-
-function multiplayer(){
-    socket.connect()
+function multiplayer() {
+    socket.connect();
     container();
     const title = document.createElement('h1');
     title.textContent = 'Multiplayer'
@@ -33,9 +25,9 @@ function multiplayer(){
     const tenButton = document.createElement('button')
     const twentyButton = document.createElement('button')
     const endlessButton = document.createElement('button')
-    
-    tenButton.textContent= "First to Level 10"
-    twentyButton.textContent= "First to Level 20"
+
+    tenButton.textContent = "First to Level 10"
+    twentyButton.textContent = "First to Level 20"
     endlessButton.textContent = "Endless Mode"
     tenButton.id = 'ten';
     twentyButton.id = 'twenty'
@@ -43,80 +35,62 @@ function multiplayer(){
 
 
     tenButton.addEventListener('click', () => {
-        
-            multiLobby('ten')
-        
-   });
+        multiLobby('ten')
+    });
 
-   twentyButton.addEventListener('click', () => {
-        
-            multiLobby('twenty')
-            
-   });
+    twentyButton.addEventListener('click', () => {
+        multiLobby('twenty')
+    });
 
     endlessButton.addEventListener('click', () => {
-       if(gameStatus['endless'] === false) {
+        if (gameStatus['endless'] === false) {
             multiLobby('endless');
-       }
-       else{
-        endlessButton.textContent = "Endless Mode is in Progress";
-       }
-   });
-   loginContainer.append(tenButton,twentyButton,endlessButton)
-    
+        }
+        else {
+            endlessButton.textContent = "Endless Mode is in Progress";
+        }
+    });
+    loginContainer.append(tenButton, twentyButton, endlessButton)
 }
-function container(){
+
+function container() {
     screen.innerHTML = '';
     screen.style.flexDirection = 'column';
     screen.style.alignItems = 'center';
     screen.style.justifyContent = 'center';
 
-    // 1. Create the main login container
     const loginContainer = document.createElement('div');
     loginContainer.id = 'login-container';
 
-    // 2. Create all necessary elements
     const title = document.createElement('h1');
     title.textContent = 'MemTest'
     loginContainer.append(title);
     screen.appendChild(loginContainer)
 }
 
-function getUsername(){
-
+function getUsername() {
     const loginContainer = document.querySelector("#login-container")
-
     const greetingOutput = document.createElement('p');
-
     const formGroup = document.createElement('div');
     formGroup.className = 'username-group';
     const userLabel = document.createElement('label');
     const usernameInput = document.createElement('input');
     const submitButton = document.createElement('button');
     greetingOutput.id = 'greeting';
-
     userLabel.textContent = 'Enter Your Username';
     userLabel.htmlFor = 'usernameInput';
-
     usernameInput.type = 'text';
     usernameInput.id = 'usernameInput';
     usernameInput.placeholder = 'e.g., PlayerOne';
-    // Set current username if it exists
-    
-        greetingOutput.textContent = 'Please enter a username to begin.';
-    
+    greetingOutput.textContent = 'Please enter a username to begin.';
     submitButton.textContent = 'Set Username';
     submitButton.id = 'submit-button';
 
-      // 4. Define event listeners
     submitButton.addEventListener('click', () => {
         yourUsername = usernameInput.value.trim();
         sessionStorage.setItem('username', yourUsername);
-        console.log(yourUsername)
         if (yourUsername) {
             greetingOutput.textContent = `Username set to: ${yourUsername}! 👋`;
-            
-       
         } else {
             greetingOutput.textContent = 'Please enter a valid username.';
         }
@@ -130,96 +104,66 @@ function getUsername(){
     formGroup.append(userLabel, usernameInput);
     loginContainer.append(greetingOutput, formGroup, submitButton)
 }
-function home() {
 
+function home() {
     container();
     getUsername();
-
     const loginContainer = document.querySelector("#login-container")
-    console.log(loginContainer)
-    
     const greetingOutput = document.createElement('p');
-    
-
-    // play option group
-    
     const singleButton = document.createElement('button')
     const multiButton = document.createElement('button')
-
-    
-    singleButton.textContent="Singleplayer Mode"
-    multiButton.textContent="Multiplayer Mode"
+    singleButton.textContent = "Singleplayer Mode"
+    multiButton.textContent = "Multiplayer Mode"
     singleButton.addEventListener('click', () => {
-        if (yourUsername != ''){
+        if (yourUsername != '') {
             window.location.href = '/singleplayer';
         }
-       
-   });
-
-   multiButton.addEventListener('click', () => {
-        if (yourUsername != ''){
+    });
+    multiButton.addEventListener('click', () => {
+        if (yourUsername != '') {
             window.location.href = '/multiplayer';
         }
-       
-   });
-
-
-    // 5. Append elements to build the structure
-    
+    });
     loginContainer.append(singleButton, multiButton);
 }
+
 function multiLobby(mode) {
-    
-    if(!frontEndPlayers[socket.id]){
+    currentGameMode = mode; // Set the current game mode
+
+    if (!frontEndPlayers[socket.id]) {
         const username = sessionStorage.getItem('username') || 'Guest';
         socket.emit('Lobby', username, mode);
-          
-        frontEndPlayers[socket.id].username = username;
-       
+        // The 'Lobby' event response will populate frontEndPlayers
     }
-    // Clear screen and reset styles for the login view
+
     screen.innerHTML = '';
     screen.style.flexDirection = 'column';
     screen.style.alignItems = 'center';
     screen.style.justifyContent = 'center';
 
-    // 1. Create the main login container
     const loginContainer = document.createElement('div');
     loginContainer.id = 'login-container';
-
-    // 2. Create all necessary elements
     const title = document.createElement('h1');
     const greetingOutput = document.createElement('p');
-
-    // Username input group
     const formGroup = document.createElement('div');
     formGroup.className = 'username-group';
-    
     const userLabel = document.createElement('label');
     const usernameInput = document.createElement('input');
     const submitButton = document.createElement('button');
-
-    // Player list
     const listContainer = document.createElement('div');
     listContainer.id = 'playersList-container';
     const listTitle = document.createElement('h2');
     const list = document.createElement('ul');
-
-    // Ready button
     let readyButton = document.createElement('button');
 
-    // 3. Configure the elements
     title.textContent = 'MemTest' + state;
-    
     greetingOutput.id = 'greeting';
-
     userLabel.textContent = 'Enter Your Username';
     userLabel.htmlFor = 'usernameInput';
-
     usernameInput.type = 'text';
     usernameInput.id = 'usernameInput';
     usernameInput.placeholder = 'e.g., PlayerOne';
-    // Set current username if it exists
+
     if (frontEndPlayers[socket.id] && frontEndPlayers[socket.id].username !== 'Guest') {
         usernameInput.value = frontEndPlayers[socket.id].username;
         greetingOutput.textContent = `Welcome back, ${frontEndPlayers[socket.id].username}!`;
@@ -229,28 +173,24 @@ function multiLobby(mode) {
 
     submitButton.textContent = 'Set Username';
     submitButton.id = 'submit-button';
-
     list.id = 'playersList';
     listTitle.textContent = 'Players in Lobby';
 
-    // Populate player list
-    for (const key of Object.keys(frontEndPlayers)) {
-        const player = frontEndPlayers[key];
-        const listItem = document.createElement('li');
-
-        if (key === socket.id) {
-            listItem.classList.add('you');
+    // Populate list - this will be overwritten by 'Lobby' and 'update' events
+    // but useful for initial render if data is already present
+    for (const key in frontEndPlayers) {
+        if (frontEndPlayers[key].mode === mode) {
+            const player = frontEndPlayers[key];
+            const listItem = document.createElement('li');
+            if (key === socket.id) listItem.classList.add('you');
+            const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
+            const statusText = player.ready ? 'Ready' : 'Not Ready';
+            listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span class="${statusClass}">${statusText}</span>`;
+            list.appendChild(listItem);
         }
-
-        const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
-        const statusText = player.ready ? 'Ready' : 'Not Ready';
-        listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span class="${statusClass}">${statusText}</span>`;
-
-        list.appendChild(listItem);
     }
 
     readyButton.id = 'readyButton';
-    // Update ready button text and style based on current state
     if (frontEndPlayers[socket.id] && frontEndPlayers[socket.id].ready) {
         readyButton.textContent = 'Unready';
         readyButton.classList.add('ready');
@@ -259,14 +199,14 @@ function multiLobby(mode) {
         readyButton.classList.add('not-ready');
     }
 
-    // 4. Define event listeners
     submitButton.addEventListener('click', () => {
         const username = usernameInput.value.trim();
         if (username) {
             greetingOutput.textContent = `Username set to: ${username}! 👋`;
-            frontEndPlayers[socket.id].username = username;
-            socket.emit('updateUsername', frontEndPlayers[socket.id], mode);
-       
+            if(frontEndPlayers[socket.id]) {
+                frontEndPlayers[socket.id].username = username;
+                socket.emit('updateUsername', frontEndPlayers[socket.id], mode);
+            }
         } else {
             greetingOutput.textContent = 'Please enter a valid username.';
         }
@@ -279,48 +219,42 @@ function multiLobby(mode) {
     });
 
     readyButton.addEventListener('click', () => {
-        frontEndPlayers[socket.id].ready = !frontEndPlayers[socket.id].ready;
-        socket.emit('ready', frontEndPlayers[socket.id], socket.id);
+        if(frontEndPlayers[socket.id]) {
+            frontEndPlayers[socket.id].ready = !frontEndPlayers[socket.id].ready;
+            socket.emit('ready', frontEndPlayers[socket.id], socket.id, mode);
+        }
     });
 
-    // 5. Append elements to build the structure
     formGroup.append(userLabel, usernameInput);
     listContainer.append(listTitle, list);
     loginContainer.append(title, greetingOutput, formGroup, submitButton, listContainer, readyButton);
-
     screen.appendChild(loginContainer);
 }
+
 function createContainer(id, parentElement) {
     const gridContainer = document.createElement('div');
     gridContainer.className = 'grid-container';
     gridContainer.dataset.id = id;
-
-
     const temp = document.createElement('div');
     temp.className = 'text-container';
     temp.dataset.id = id;
-
     const p0 = document.createElement('p');
     const p1 = document.createElement('p');
     const p2 = document.createElement('p');
     const p3 = document.createElement('p');
     p3.className = 'timer';
-
     if (socket.id === id) {
         gridContainer.classList.add('is-you');
         p0.textContent = frontEndPlayers[id].username + " (YOU)";
     } else {
         p0.textContent = frontEndPlayers[id].username;
     }
-
     p1.textContent = 'Lives: ' + frontEndPlayers[id].lives;
     p2.textContent = 'Score: ' + frontEndPlayers[id].score;
-
     temp.appendChild(p0)
     temp.appendChild(p1);
     temp.appendChild(p2);
     temp.appendChild(p3);
-
     gridContainer.appendChild(temp);
     parentElement.appendChild(gridContainer);
 }
@@ -334,7 +268,6 @@ function createGrid(x, id) {
     var size = Math.min(gridContainer.clientHeight * 0.9, (screen.clientWidth / (length <= 3 ? length : Math.ceil(length / 2)) * 0.6));
     grid.style.width = size + 'px';
     gridContainer.appendChild(grid);
-
     for (let i = 0; i < x; i++) {
         for (let j = 0; j < x; j++) {
             const cell = document.createElement('div');
@@ -352,20 +285,17 @@ function generateCorrect(id) {
     frontEndPlayers[id].correctData.forEach(index => {
         const cell = document.querySelector('.newCell[style*="grid-area: ' + index + '"][data-id="' + id + '"]');
         if (cell) {
-            cell.style.backgroundColor = '#ff0'; // Retro Yellow
+            cell.style.backgroundColor = '#ff0';
         }
     });
-
     setTimeout(() => {
         frontEndPlayers[id].correctData.forEach(index => {
             const cell = document.querySelector('.newCell[style*="grid-area: ' + index + '"][data-id="' + id + '"]');
             if (cell) {
-
-                if (cell.style.backgroundColor != '#0f0' || cell.style.backgroundColor != '#f00') { // Not correct green
+                if (cell.style.backgroundColor != '#0f0' || cell.style.backgroundColor != '#f00') {
                     cell.style.transition = 'background-color 0.5s ease';
-                    cell.style.backgroundColor = '#444'; // Default retro grey
+                    cell.style.backgroundColor = '#444';
                 }
-
             }
         });
     }, 3000);
@@ -373,10 +303,8 @@ function generateCorrect(id) {
 
 function renderGameScreen(players, data, gridRow, isNewGame) {
     screen.innerHTML = '';
-
     const playerIds = Object.keys(players);
     const playerCount = playerIds.length;
-
     for (const id in players) {
         if (isNewGame) {
             frontEndPlayers[id].score = 0;
@@ -385,11 +313,9 @@ function renderGameScreen(players, data, gridRow, isNewGame) {
         if (frontEndPlayers[id].lives > 0) {
             frontEndPlayers[id].chances = 3;
         }
-
         frontEndPlayers[id].cellsClicked = [];
         frontEndPlayers[id].correctData = structuredClone(data);
     }
-
     if (playerCount > 3) {
         screen.className = 'game-screen-two-rows';
         const topRow = document.createElement('div');
@@ -398,23 +324,17 @@ function renderGameScreen(players, data, gridRow, isNewGame) {
         bottomRow.className = 'game-row';
         screen.appendChild(topRow);
         screen.appendChild(bottomRow);
-
         const splitIndex = Math.ceil(playerCount / 2);
         playerIds.forEach((id, index) => {
             const parentRow = index < splitIndex ? topRow : bottomRow;
-            // Render logic for dead/alive players
             renderPlayerGrid(id, parentRow, gridRow);
         });
     } else {
-        screen.style.flexDirection = 'row';
-        screen.style.justifyContent = 'center';
-        screen.style.alignItems = 'center';
         screen.className = 'game-screen-single-row';
         playerIds.forEach((id) => {
             renderPlayerGrid(id, screen, gridRow);
         });
     }
-
     generateCorrect(socket.id);
     attach();
 }
@@ -426,166 +346,88 @@ function renderPlayerGrid(id, parentElement, gridRow) {
     } else {
         createGrid(gridRow, id);
         const container = document.querySelector('.grid[data-id="' + id + '"]');
-        container.innerHTML = ''; // Clear the grid container
-
-
-        container.textContent = 'UDEAD!'; // Display "You Lost!" message
-        container.style.fontSize = '32px'; // Increase font size for visibility
-        container.style.color = 'red'; // Set text color to red
-        container.style.alignItems = 'center'; // Center the text horizontally
-        container.style.justifyContent = 'center'; // Center the text vertically
-        container.style.textAlign = 'center';
+        container.innerHTML = 'UDEAD!';
+        container.style.fontSize = '32px';
+        container.style.color = 'red';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
     }
 }
 
 socket.on('disconnected', (backEndPlayers, id) => {
-    for (const id in frontEndPlayers) {
-        if (!backEndPlayers[id]) {
-            delete frontEndPlayers[id];
-        }
+    delete frontEndPlayers[id];
+    const container = document.querySelector('.grid-container[data-id="' + id + '"]');
+    if(container) {
+        container.innerHTML = '<h2>Player Disconnected</h2>';
     }
-    const container = document.querySelector('.grid[data-id="' + id + '"]');
-    container.innerHTML = '';
-    container.innerHTML = ''; // Clear the grid container
-
-
-    container.textContent = 'RAN!'; // Display "You Lost!" message
-    container.style.fontSize = '32px'; // Increase font size for visibility
-    container.style.color = 'red'; // Set text color to red
-    container.style.alignItems = 'center'; // Center the text horizontally
-    container.style.justifyContent = 'center'; // Center the text vertically
-    container.style.textAlign = 'center';
 });
+
 socket.on('Lobby', (backEndPlayers, mode) => {
-
-    screen.innerHTML = ''; // Clear the screen before creating a new grid\
-
-    for (const id in backEndPlayers) {
-        const backEndPlayer = backEndPlayers[id];
-        if (!frontEndPlayers[id]) {
-            frontEndPlayers[id] = new Player(0, 0, 3, backEndPlayer.username, id, mode);
-        }
-        else {
-            frontEndPlayers[id].username = backEndPlayers[id].username;
-        }
-    }
-    for (const id in frontEndPlayers) {
-        if (!backEndPlayers[id]) {
+    // Clear frontend players for the current mode to sync with backend
+    for(const id in frontEndPlayers) {
+        if(frontEndPlayers[id].mode === mode) {
             delete frontEndPlayers[id];
         }
-
     }
-    
-    multiLobby(mode); 
+    // Add/update players from the backend
+    for (const id in backEndPlayers) {
+        frontEndPlayers[id] = { ...backEndPlayers[id] };
+    }
+    multiLobby(mode);
 });
+
 socket.on('updateTime', (time) => {
     remainingTime = time;
     let timer = document.querySelectorAll('.timer');
     timer.forEach((t) => {
-        t.textContent = ' Time Left: ' + time;
+        t.textContent = ' Time Left: ' + (time / 10).toFixed(1);
     });
-
 });
-
-socket.on('startGame', (players, data) => {
-    setTimeout(() => {
-        renderGameScreen(players, data, 5, true);
-    }, 500);
-});
-socket.on('finished', (player, id) => {
-
-    position++;
-
-    frontEndPlayers[id].score = player.score;
-    const container = document.querySelector('.grid[data-id="' + id + '"]');
-    container.innerHTML = ''; // Clear the grid container
-    const size = container.clientHeight / 2 - 50 + 'px';
-
-    container.style.width = size + 'px'; // Set the width of the grid container
-    container.style.height = size + 'px'; // Set the height of
-
-    container.innerHTML = 'DOPADOWN! ' + '<br>Position: ' + position; // Display "You Lost!" message
-    container.style.fontSize = '32px'; // Increase font size for visibility
-    container.style.color = 'GREEN'; // Set text color to red
-    container.style.alignItems = 'center'; // Center the text horizontally
-    container.style.justifyContent = 'center'; // Center the text vertically
-});
-
 
 socket.on('nextRound', (player, players, correctData, level, rows, newGame) => {
-
     position = 0;
-    setTimeout(() => {
-        for (const id in players) {
-            frontEndPlayers[id].lives = players[id].lives
+    for (const id in players) {
+        if(frontEndPlayers[id]) {
+            frontEndPlayers[id].lives = players[id].lives;
+            frontEndPlayers[id].score = players[id].score;
         }
-        if (frontEndPlayers[player]) {
-            
-            frontEndPlayers[player].score = players[player].score;
-            if (newGame) {
-                renderGameScreen(players, correctData, 5, true);
-            }
-            else {
-                renderGameScreen(players, correctData, rows, false);
-            }
-        }
-    }, 20);
-
-
-
+    }
+    renderGameScreen(players, correctData, rows, newGame);
 });
 
 socket.on('score', (playerData, id) => {
-
-    frontEndPlayers[id].lives = playerData.lives; // Update the player's data
-    frontEndPlayers[id].score = playerData.score;
-    const temp = document.querySelector('.text-container[data-id="' + id + '"]');
-    temp.textContent = '';
-    let p0 = document.createElement('p')
-    let p1 = document.createElement('p');
-    let p2 = document.createElement('p');
-    let p3 = document.createElement('p')
-    p3.className = 'timer'
-    if (socket.id === id) {
-
-        p0.textContent = frontEndPlayers[id].username + " (YOU)";
-    } else {
-        p0.textContent = frontEndPlayers[id].username;
+    if(frontEndPlayers[id]) {
+        frontEndPlayers[id].lives = playerData.lives;
+        frontEndPlayers[id].score = playerData.score;
+        const temp = document.querySelector('.text-container[data-id="' + id + '"]');
+        if (temp) {
+            temp.children[1].textContent = ' Lives: ' + playerData.lives;
+            temp.children[2].textContent = ' Score: ' + playerData.score;
+        }
     }
-    p1.textContent = ' Lives: ' + playerData.lives;
-    p2.textContent = ' Score: ' + playerData.score;
-    p3.textContent = ' Time Left: ' + remainingTime;
-    temp.appendChild(p0);
-    temp.appendChild(p1);
-    temp.appendChild(p2);
-    temp.appendChild(p3);
 });
 
 socket.on('update', (backEndPlayers, id) => {
-    for (const id in backEndPlayers) {
-        if(frontEndPlayers[id]){
-        frontEndPlayers[id].username = backEndPlayers[id].username;
-        frontEndPlayers[id].ready = backEndPlayers[id].ready;
+    for (const p_id in backEndPlayers) {
+        if (frontEndPlayers[p_id]) {
+            frontEndPlayers[p_id].username = backEndPlayers[p_id].username;
+            frontEndPlayers[p_id].ready = backEndPlayers[p_id].ready;
         }
     }
     const list = document.querySelector('#playersList');
-    list.innerHTML = ''; // Clear existing list items
-
-    for (const key of Object.keys(frontEndPlayers)) {
-        const player = frontEndPlayers[key];
-        const listItem = document.createElement('li');
-
-        if (key === socket.id) {
-            listItem.classList.add('you');
+    if (list) {
+        list.innerHTML = '';
+        for (const key in backEndPlayers) {
+            const player = backEndPlayers[key];
+            const listItem = document.createElement('li');
+            if (key === socket.id) listItem.classList.add('you');
+            const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
+            const statusText = player.ready ? 'Ready' : 'Not Ready';
+            listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span class="${statusClass}">${statusText}</span>`;
+            list.appendChild(listItem);
         }
-
-        const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
-        const statusText = player.ready ? 'Ready' : 'Not Ready';
-        listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span class="${statusClass}">${statusText}</span>`;
-
-        list.appendChild(listItem);
     }
-    // Update the ready button state
     const readyButton = document.querySelector('#readyButton');
     if (readyButton && frontEndPlayers[socket.id]) {
         if (frontEndPlayers[socket.id].ready) {
@@ -599,129 +441,94 @@ socket.on('update', (backEndPlayers, id) => {
         }
     }
 });
+
 socket.on('gameOver', (backEndPlayers) => {
-    for (const p in frontEndPlayers) {
-        frontEndPlayers[p].ready = false;
-    }
     screen.innerHTML = '';
-
-    screen.className = ''; // Reset screen classes
-
+    screen.className = '';
     const leaderboardContainer = document.createElement('div');
     leaderboardContainer.className = 'leaderboard-container';
-
     const title = document.createElement('h1');
     title.textContent = 'Game Over';
-
     const subtitle = document.createElement('h2');
     subtitle.textContent = 'Final Scores';
-
     const playersArray = Object.values(backEndPlayers);
     playersArray.sort((a, b) => b.score - a.score);
-
     const playerList = document.createElement('ol');
-
     playersArray.forEach((player, index) => {
         const playerEntry = document.createElement('li');
         let medal = '';
-        if (index === 0) medal = '1ST';
-        else if (index === 1) medal = '2ND';
-        else if (index === 2) medal = '3RD';
+        if (index === 0) medal = '🏆 1ST';
+        else if (index === 1) medal = '🥈 2ND';
+        else if (index === 2) medal = '🥉 3RD';
         else medal = `${index + 1}TH`;
-
         playerEntry.textContent = `${medal} ${player.username} - ${player.score}`;
         playerList.appendChild(playerEntry);
     });
-
     const homeButton = document.createElement('button');
-    homeButton.textContent = 'Return to Home';
+    homeButton.textContent = 'Return to Lobby';
     homeButton.addEventListener('click', () => socket.emit('Lobby', frontEndPlayers[socket.id].username, frontEndPlayers[socket.id].mode));
-
     leaderboardContainer.append(title, subtitle, playerList, homeButton);
     screen.appendChild(leaderboardContainer);
-
 });
-
 
 socket.on('lostGame', (backEndPlayers, player) => {
     const container = document.querySelector('.grid[data-id="' + player + '"]');
-    container.innerHTML = ''; // Clear the grid container
-
-
-    container.textContent = 'UTRASH!'; // Display "You Lost!" message
-    container.style.fontSize = '32px'; // Increase font size for visibility
-    container.style.color = 'red'; // Set text color to red
-    container.style.alignItems = 'center'; // Center the text horizontally
-    container.style.justifyContent = 'center'; // Center the text vertically
-    container.style.textAlign = 'center';
+    if(container) {
+        container.innerHTML = 'UTRASH!';
+        container.style.fontSize = '32px';
+        container.style.color = 'red';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+    }
 });
-socket.on('cellClicked', (num, player) => {
-    console.log('Cell clicked:', num);
-    console.log('By player:', player);
 
+socket.on('finished', (player, id) => {
+    position++;
+    if(frontEndPlayers[id]) frontEndPlayers[id].score = player.score;
+    const container = document.querySelector('.grid[data-id="' + id + '"]');
+    if(container){
+        container.innerHTML = 'DOPADOWN! <br>Position: ' + position;
+        container.style.fontSize = '32px';
+        container.style.color = 'lime';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        container.style.textAlign = 'center';
+    }
+});
+
+socket.on('cellClicked', (num, player) => {
     const cell = document.querySelector('.newCell[style*="grid-area: ' + num + '"][data-id="' + player + '"]');
-    if (cell && !(frontEndPlayers[player].cellsClicked.includes(num))) {
+    if (cell && frontEndPlayers[player] && !(frontEndPlayers[player].cellsClicked.includes(num))) {
         frontEndPlayers[player].cellsClicked.push(num);
         if (frontEndPlayers[player].correctData.includes(num)) {
-            cell.style.backgroundColor = '#0f0'; // Change color to green if correct
+            cell.style.backgroundColor = '#0f0';
             frontEndPlayers[player].correct += 1;
-            frontEndPlayers[player].correctData.splice(frontEndPlayers[player].correctData.indexOf(num), 1); // Remove the number from correctData
+            frontEndPlayers[player].correctData.splice(frontEndPlayers[player].correctData.indexOf(num), 1);
             frontEndPlayers[player].score += 10;
             if (frontEndPlayers[player].correctData.length === 0 && player === socket.id) {
-                console.log('0 cells left');
-                socket.emit('wonRound', frontEndPlayers, player);
+                socket.emit('wonRound', frontEndPlayers[player], player, currentGameMode);
                 return;
             }
-
         } else {
-            
-            cell.style.backgroundColor = '#f00'; // Change color to red if incorrect
-            
+            cell.style.backgroundColor = '#f00';
             frontEndPlayers[player].chances -= 1;
-            if(frontEndPlayers[player].chances <=0){
-                frontEndPlayers[player].lives -=1;
+            if (frontEndPlayers[player].chances <= 0) {
+                frontEndPlayers[player].lives -= 1;
             }
-            /*
-                       let allDead = true;
-            let deadRound = true;
-            for (const key in frontEndPlayers) {
-                if (frontEndPlayers[key].lives >= 1) {
-                    allDead = false;
-                }
-                if (frontEndPlayers[key].chances >= 1) {
-                    deadRound = false;
-                }
-            }
-            if (allDead) {
-                socket.emit('gameOver', frontEndPlayers);
-
-                return;
-            }
-            if (deadRound && player === socket.id) {
-                socket.emit('deadRound', player);
-
-
-            }
-            if (frontEndPlayers[player].chances <= 0 && player === socket.id) {
-                
-                socket.emit('lostGame', frontEndPlayers, player);
-                socket.emit('updateScore', frontEndPlayers[player], player);
-            }
-            */
-
         }
     }
     if (player === socket.id) {
-        socket.emit('updateScore', frontEndPlayers[player], player);
+        socket.emit('updateScore', frontEndPlayers[player], player, currentGameMode);
     };
 });
 
-socket.on('check', (inProgress) =>{
+socket.on('check', (inProgress) => {
     gameStatus = structuredClone(inProgress);
-    for (const key in gameStatus){
-        if (gameStatus[key] === true){
-            
-
+    for (const key in gameStatus) {
+        if (gameStatus[key] === true) {
+            // Potentially disable buttons for games in progress
         }
     }
 });
