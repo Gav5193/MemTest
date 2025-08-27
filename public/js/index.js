@@ -16,13 +16,13 @@ var yourUsername = ''
 
 var state = "";
 
-
+var gameStatus = {}
 const frontEndPlayers = {}
 
 
 
 function multiplayer(){
-   
+    socket.connect()
     container();
     const title = document.createElement('h1');
     title.textContent = 'Multiplayer'
@@ -37,6 +37,9 @@ function multiplayer(){
     tenButton.textContent= "First to Level 10"
     twentyButton.textContent= "First to Level 20"
     endlessButton.textContent = "Endless Mode"
+    tenButton.id = 'ten';
+    twentyButton.id = 'twenty'
+    endlessButton.id = 'endless'
 
 
     tenButton.addEventListener('click', () => {
@@ -52,9 +55,12 @@ function multiplayer(){
    });
 
     endlessButton.addEventListener('click', () => {
-        
+       if(gameStatus['endless'] === false) {
             multiLobby('endless');
-        
+       }
+       else{
+        endlessButton.textContent = "Endless Mode is in Progress";
+       }
    });
    loginContainer.append(tenButton,twentyButton,endlessButton)
     
@@ -163,11 +169,13 @@ function home() {
     loginContainer.append(singleButton, multiButton);
 }
 function multiLobby(mode) {
-    socket.connect()
+    
     if(!frontEndPlayers[socket.id]){
-        socket.emit('Lobby', mode);
-        //frontEndPlayers[socket.id].username = sessionStorage.getItem('username');
-        socket.emit('updateUsername', frontEndPlayers[socket.id], mode);
+        const username = sessionStorage.getItem('username') || 'Guest';
+        socket.emit('Lobby', username, mode);
+          
+        frontEndPlayers[socket.id].username = username;
+       
     }
     // Clear screen and reset styles for the login view
     screen.innerHTML = '';
@@ -451,7 +459,7 @@ socket.on('disconnected', (backEndPlayers, id) => {
 socket.on('Lobby', (backEndPlayers, mode) => {
 
     screen.innerHTML = ''; // Clear the screen before creating a new grid\
-    var i = 1;
+
     for (const id in backEndPlayers) {
         const backEndPlayer = backEndPlayers[id];
         if (!frontEndPlayers[id]) {
@@ -512,7 +520,7 @@ socket.on('nextRound', (player, players, correctData, level, rows, newGame) => {
             frontEndPlayers[id].lives = players[id].lives
         }
         if (frontEndPlayers[player]) {
-            console.log('hello')
+            
             frontEndPlayers[player].score = players[player].score;
             if (newGame) {
                 renderGameScreen(players, correctData, 5, true);
@@ -625,7 +633,7 @@ socket.on('gameOver', (backEndPlayers) => {
 
     const homeButton = document.createElement('button');
     homeButton.textContent = 'Return to Home';
-    homeButton.addEventListener('click', () => socket.emit('Lobby', frontEndPlayers[socket.id].mode));
+    homeButton.addEventListener('click', () => socket.emit('Lobby', frontEndPlayers[socket.id].username, frontEndPlayers[socket.id].mode));
 
     leaderboardContainer.append(title, subtitle, playerList, homeButton);
     screen.appendChild(leaderboardContainer);
@@ -704,4 +712,14 @@ socket.on('cellClicked', (num, player) => {
     if (player === socket.id) {
         socket.emit('updateScore', frontEndPlayers[player], player);
     };
+});
+
+socket.on('check', (inProgress) =>{
+    gameStatus = structuredClone(inProgress);
+    for (const key in gameStatus){
+        if (gameStatus[key] === true){
+            
+
+        }
+    }
 });

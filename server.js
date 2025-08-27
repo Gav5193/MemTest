@@ -27,9 +27,7 @@ const inProgress = {
 }
 
 const players = {
-    "endless": {},
-    "ten": {},
-    "twenty": {}
+    
 }
 var correctData = [];
 
@@ -71,115 +69,135 @@ server.listen(
     }
 )
 io.on('connection', (socket) => {
-
-      
+    
+    socket.emit('check', inProgress);
 
     socket.on('updateUsername', (player, mode) => {
         console.log('Updating player:', player);
-        players[mode][socket.id].username = player.username;
-        io.emit('update', players, socket.id);
+        players[socket.id].username = player.username;
+        io.to(mode).emit('update', players, socket.id);
     });
-    socket.on('Lobby', (mode) => {
+    socket.on('Lobby', (username, mode) => {
+        if (inProgress[mode] === false){
         level = 1;
         gridRow = 4;
-        if (inProgress[mode]===false){
-        players[mode][socket.id] = {
+       
+        players[socket.id] = {
             score: 0,
             cellsClicked: [],
             lives: 3,
             chances: 3,
-            username: 'Guest',
+            username: 'Guest' || username,
             ready: false,
             finished: false,
             mode: mode
-        }}
+        }
 
         socket.join(mode);
-        socket.emit('Lobby', players[mode], mode);
+        io.to(mode).emit('Lobby', players, mode);
+    }
     });
     socket.on('disconnect', () => {
         console.log('user disconnected');
+        if (players[socket.id]){
+        var mode = players[socket.id].mode;
         delete players[socket.id];
-        if (Object.keys(players).length === 0) {
-            inProgress = false;
-            socket.emit('home', players, correctData);
+        var length = 0;
+        for(const id in players){
+            if (players[id].mode === mode){
+                length++;
+            }
+        }
+        if (length === 0) {
+            console.log('loaded out')
+            clearInterval(roundTimer)
+            inProgress[mode] = false;
             return;
         }
-        io.emit('disconnected', players, socket.id);
+        io.to(mode).emit('disconnected', players, socket.id);
         var dead = true;
         for (const id in players) {
-            if (players[id].finished === false) {
+            if (players[id].finished === false && players[id].mode === mode) {
                 dead = false;
             }
         }
+
         if (dead && remainingTime > 30) {
             clearInterval(roundTimer);
-            startRoundTimer(3);
+            startRoundTimer(socket.id, 3);
             setTimeout(() => {
                 for (const id in players) {
+                    if (players[id].mode === mode){
                     console.log('DCload')
-                    loadRound(id, false);
+                    loadRound(id, false, mode);
                     break;
+                    }
                 }
 
             }, 3000);
         }
+        }
     });
     socket.on('ready', (player, id) => {
+        var mode = players[socket.id].mode
         players[id].ready = player.ready;
         let allReady = true;
+        var length = 0;
         for (const p in players) {
-            if (!players[p].ready) {
+            
+            if (!players[p].ready && players[p].mode === players[socket.id].mode) {
                 allReady = false;
                 break;
             }
         }
         if (allReady) {
-            inProgress = true;
-            loadRound(id, true);
+            inProgress[mode] = true;
+            loadRound(id, true, mode);
         }
         else {
-            io.emit('update', players, socket.id);
+            io.to(players[socket.id].mode).emit('update', players, socket.id);
         }
     });
 
     socket.on('cellClicked', (num, player) => {
         console.log('Cell clicked by:', player);
         players[socket.id].cellsClicked.push(num);
-        io.emit('cellClicked', num, player);
+        io.to(players[socket.id].mode).emit('cellClicked', num, socket.id);
     });
 
+    /*
     socket.on('lostGame', (frontEndPlayers, player) => {
-        players[player].finished = true;
+        players[socket.id].finished = true;
         console.log('Game lost by:', player);
         var dead = true;
         for (const id in players) {
-            if (players[id].finished === false) {
+            if (players[id].finished === false && players[id].mode === players[socket.id].mode) {
                 dead = false;
             }
         }
         if (dead && remainingTime > 30) {
             clearInterval(roundTimer);
-            startRoundTimer(3);
+            startRoundTimer(socket.id, 3);
             setTimeout(() => {
 
                 loadRound(player, false);
 
             }, 3000);
         }
-        io.emit('lostGame', frontEndPlayers, player);
+        io.to(players[socket.id].mode).emit('lostGame', frontEndPlayers, player);
     });
-
+    /*
     socket.on('gameOver', (players) => {
         for (const p in players) {
             players[p].ready = false;
         }
         clearInterval(roundTimer);
         inProgress = false;
-        io.emit('gameOver', players);
+        io.to(players[socket.id].mode).emit('gameOver', players);
 
-    });
+    });*/
     socket.on('wonRound', (frontEndPlayers, player) => {
+        var mode = players[socket.id].mode
         if (winner === null) {
             winner = player;
             players[player].score += level * 10;
@@ -187,30 +205,31 @@ io.on('connection', (socket) => {
         players[player].finished = true;
         var allFinished = true;
         for (const id in players) {
-            if (players[id].finished === false) {
+            if (players[id].finished === false && players[id].mode === players[socket.id].mode) {
 
                 allFinished = false;
                 break;
             }
         }
         console.log('dopadown');
-        io.emit('finished', players[player], player);
+        io.to(players[socket.id].mode).emit('finished', players[player], player);
         if (allFinished && remainingTime > 30) {
             clearInterval(roundTimer);
-            startRoundTimer(3);
+            startRoundTimer(socket.id, 3);
             setTimeout(() => {
                 if (allFinished) {
-                    loadRound(player, false);
+                    
+                    loadRound(player, false, mode);
                 }
             }, 3000);
         }
     });
-
+    /*
     socket.on('deadRound', (player) => {
 
         if (remainingTime > 30) {
             clearInterval(roundTimer);
-            startRoundTimer(3);
+            startRoundTimer(socket.id, 3);
             setTimeout(() => {
 
                 loadRound(player, false);
@@ -218,8 +237,9 @@ io.on('connection', (socket) => {
         }
 
 
-    });
+    });*/
     socket.on('updateScore', (playerData, player) => {
+        var mode = players[socket.id].mode
         players[socket.id].lives = playerData.lives;
         players[socket.id].score = playerData.score;
         players[socket.id].chances = playerData.chances;
@@ -227,30 +247,37 @@ io.on('connection', (socket) => {
             let allDead = true;
             let deadRound = true;
             for (const key in players) {
-                if (players[key].lives >= 1) {
-                    allDead = false;
-                }
-                if (players[key].chances >= 1) {
-                    deadRound = false;
+                if (players[key].mode === players[socket.id].mode){
+                    if (players[key].lives >= 1) {
+                        allDead = false;
+                    }
+                    if (players[key].chances >= 1) {
+                        deadRound = false;
+                    }
                 }
             }
             if (allDead) {
                 for (const p in players) {
-            players[p].ready = false;
-        }
-        clearInterval(roundTimer);
-        inProgress = false;
-        io.emit('gameOver', players);
+                    if (players[p].mode === players[socket.id].mode){
+                    players[p].ready = false;
+                    }
+                }
+                clearInterval(roundTimer);
+                inProgress[players[socket.id].mode] = false;
+                io.to(players[socket.id].mode).emit('gameOver', players);
+                io.emit('check', inProgress);
                 return;
             }
             if (deadRound && player === socket.id) {
                 
                 if (remainingTime > 30) {
                     clearInterval(roundTimer);
-                    startRoundTimer(3);
+                    startRoundTimer(socket.id, 3);
                     setTimeout(() => {
+                        if(players[socket.id]){
 
-                loadRound(player, false);
+                loadRound(player, false, mode);
+                    }
             }, 3000);
         }
             }
@@ -266,35 +293,39 @@ io.on('connection', (socket) => {
         }
         if (dead && remainingTime > 30) {
             clearInterval(roundTimer);
-            startRoundTimer(3);
+            startRoundTimer(socket.id, 3);
             setTimeout(() => {
+                if (players[player]){
+                loadRound(player, false, mode);
 
-                loadRound(player, false);
-
+            }
             }, 3000);
         }
-        io.emit('lostGame', players, player);
-                io.emit('score', players[player], player);
+                io.to(players[socket.id].mode).emit('lostGame', players, player);
+                io.to(players[socket.id].mode).emit('score', players[player], player);
             }
 
-        io.emit('score', players[socket.id], player);
+        io.to(players[socket.id].mode).emit('score', players[socket.id], player);
     });
 
     // Handle other socket events here
 });
 
-function loadRound(player, isNewGame) {
-
+function loadRound(player, isNewGame, currentmode) {
+    if (inProgress[currentmode] == false){
+        return;
+    }
+    var mode = currentmode
     winner = null;
     var allDead = true;
     for (const id in players) {
-        if (players[id].lives > 0) {
+        if (players[id].lives > 0 && players[id].mode === mode) {
             allDead = false;
             break;
         }
     }
     if (allDead) {
-        io.emit('gameOver', players);
+        io.to(mode).emit('gameOver', players);
         return;
     }
     level++;
@@ -305,6 +336,7 @@ function loadRound(player, isNewGame) {
     generateCorrect();
     for (const p in players) {
 
+        if (players[p].mode === mode){
         players[p].cellsClicked = [];
         players[p].ready = false;
 
@@ -313,15 +345,16 @@ function loadRound(player, isNewGame) {
             players[p].chances = 3;
         }
     }
+    }
     timeOut(level, player);
     clearInterval(roundTimer);
-    startRoundTimer(23);
-    io.emit('nextRound', player, players, correctData, level, gridRow, isNewGame);
+    startRoundTimer(player, 23);
+    io.to(mode).emit('nextRound', player, players, correctData, level, gridRow, isNewGame);
 }
 
-function finished() {
+function finished(socketID) {
     for (const id in players) {
-        if (players[id].finished != true && players[id].lives > 0) {
+        if (players[id].finished != true && players[id].lives > 0 && players[id].mode === players[socketID].mode) {
             players[id].lives -= 1;
         }
     }
@@ -330,21 +363,25 @@ function finished() {
 function timeOut(preLevel, player) {
     setTimeout(() => {
         if (level === preLevel) {
-            finished();
-            loadRound(player, false);
+            
+            if (players[player]){
+                var mode = players[player].mode
+                finished(player);
+                loadRound(player, false,mode);
+            }
         }
     }, 23000);
 }
 
 let roundTimer = undefined;
-function startRoundTimer(time) {
-
+function startRoundTimer(id, time) {
+    var mode = players[id].mode
     remainingTime = time * 10; // Seconds for the round
     roundTimer = setInterval(() => {
         if (remainingTime <= 0) {
             clearInterval(roundTimer);
         }
         remainingTime--;
-        io.emit('updateTime', remainingTime);
+        io.to(mode).emit('updateTime', remainingTime);
     }, 100);
 }
