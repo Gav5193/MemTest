@@ -20,6 +20,9 @@ var playerNum = 0;
 var winner = null;
 var remainingTime = 0;
 
+const gameData = {
+    
+}
 const inProgress = {
     "endless": false,
     "ten": false,
