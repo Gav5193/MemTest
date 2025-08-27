@@ -1,56 +1,24 @@
-
-const socket = io({ autoConnect: false }); // Connect to the server
+const socket = io({ autoConnect: false });
 
 const screen = document.querySelector('#screen');
-let currentGameMode = ''; // Global variable to store the current game mode
+let currentGameMode = '';
 
-var gridRow = level; // Number of rows in the grid
-var level;
+var gridRow = 0;
+var level = 0;
 var remainingTime = 0;
 var position = 0;
 var yourUsername = '';
 var state = "";
-var gameStatus = {};
 const frontEndPlayers = {};
 
-function multiplayer() {
+// --- New Entry Point for Lobby Page ---
+function initializeLobby() {
     socket.connect();
-    container();
-    const title = document.createElement('h1');
-    title.textContent = 'Multiplayer'
-    const loginContainer = document.querySelector('#login-container')
-    loginContainer.append(title);
+    yourUsername = sessionStorage.getItem('username') || 'Guest';
+    currentGameMode = GAME_MODE; // Use global const from EJS
 
-
-    const tenButton = document.createElement('button')
-    const twentyButton = document.createElement('button')
-    const endlessButton = document.createElement('button')
-
-    tenButton.textContent = "First to Level 10"
-    twentyButton.textContent = "First to Level 20"
-    endlessButton.textContent = "Endless Mode"
-    tenButton.id = 'ten';
-    twentyButton.id = 'twenty'
-    endlessButton.id = 'endless'
-
-
-    tenButton.addEventListener('click', () => {
-        multiLobby('ten')
-    });
-
-    twentyButton.addEventListener('click', () => {
-        multiLobby('twenty')
-    });
-
-    endlessButton.addEventListener('click', () => {
-        if (gameStatus['endless'] === false) {
-            multiLobby('endless');
-        }
-        else {
-            endlessButton.textContent = "Endless Mode is in Progress";
-        }
-    });
-    loginContainer.append(tenButton, twentyButton, endlessButton)
+    socket.emit('joinLobby', ROOM_ID, yourUsername);
+    multiLobby(GAME_MODE, IS_IN_PROGRESS);
 }
 
 function container() {
@@ -58,18 +26,16 @@ function container() {
     screen.style.flexDirection = 'column';
     screen.style.alignItems = 'center';
     screen.style.justifyContent = 'center';
-
     const loginContainer = document.createElement('div');
     loginContainer.id = 'login-container';
-
     const title = document.createElement('h1');
-    title.textContent = 'MemTest'
+    title.textContent = 'MemTest';
     loginContainer.append(title);
-    screen.appendChild(loginContainer)
+    screen.appendChild(loginContainer);
 }
 
 function getUsername() {
-    const loginContainer = document.querySelector("#login-container")
+    const loginContainer = document.querySelector("#login-container");
     const greetingOutput = document.createElement('p');
     const formGroup = document.createElement('div');
     formGroup.className = 'username-group';
@@ -89,146 +55,125 @@ function getUsername() {
     submitButton.addEventListener('click', () => {
         yourUsername = usernameInput.value.trim();
         sessionStorage.setItem('username', yourUsername);
-        if (yourUsername) {
-            greetingOutput.textContent = `Username set to: ${yourUsername}! 👋`;
-        } else {
-            greetingOutput.textContent = 'Please enter a valid username.';
-        }
+        greetingOutput.textContent = yourUsername ? `Username set to: ${yourUsername}!` : 'Please enter a valid username.';
     });
     usernameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            submitButton.click();
-        }
+        if (e.key === 'Enter') submitButton.click();
     });
 
     formGroup.append(userLabel, usernameInput);
-    loginContainer.append(greetingOutput, formGroup, submitButton)
+    loginContainer.append(greetingOutput, formGroup, submitButton);
 }
 
 function home() {
     container();
     getUsername();
-    const loginContainer = document.querySelector("#login-container")
-    const greetingOutput = document.createElement('p');
-    const singleButton = document.createElement('button')
-    const multiButton = document.createElement('button')
-    singleButton.textContent = "Singleplayer Mode"
-    multiButton.textContent = "Multiplayer Mode"
-    singleButton.addEventListener('click', () => {
-        if (yourUsername != '') {
-            window.location.href = '/singleplayer';
-        }
-    });
+    const loginContainer = document.querySelector("#login-container");
+    const singleButton = document.createElement('button');
+    const multiButton = document.createElement('button');
+    singleButton.textContent = "Singleplayer Mode";
+    multiButton.textContent = "Multiplayer Mode";
+    
     multiButton.addEventListener('click', () => {
-        if (yourUsername != '') {
+        if (sessionStorage.getItem('username')) {
             window.location.href = '/multiplayer';
+        } else {
+            alert('Please set a username first.');
         }
     });
     loginContainer.append(singleButton, multiButton);
 }
 
-function multiLobby(mode) {
-    currentGameMode = mode; // Set the current game mode
-
-    if (!frontEndPlayers[socket.id]) {
-        const username = sessionStorage.getItem('username') || 'Guest';
-        socket.emit('Lobby', username, mode);
-        // The 'Lobby' event response will populate frontEndPlayers
-    }
-
+function multiLobby(mode, isInProgress) {
     screen.innerHTML = '';
     screen.style.flexDirection = 'column';
     screen.style.alignItems = 'center';
     screen.style.justifyContent = 'center';
 
-    const loginContainer = document.createElement('div');
-    loginContainer.id = 'login-container';
+    const lobbyContainer = document.createElement('div');
+    lobbyContainer.id = 'login-container';
+
     const title = document.createElement('h1');
-    const greetingOutput = document.createElement('p');
-    const formGroup = document.createElement('div');
-    formGroup.className = 'username-group';
-    const userLabel = document.createElement('label');
+    title.textContent = `Lobby - ${mode.charAt(0).toUpperCase() + mode.slice(1)} Mode`;
+    const lobbyLink = document.createElement('input');
+    lobbyLink.type = 'text';
+    lobbyLink.value = window.location.href;
+    lobbyLink.readOnly = true;
+    lobbyLink.title = 'Click to copy lobby link';
+    lobbyLink.onclick = () => {
+        lobbyLink.select();
+        document.execCommand('copy');
+    };
+    
+    
+    const usernameGroup = document.createElement('div');
+    usernameGroup.className = 'username-group';
+    
     const usernameInput = document.createElement('input');
-    const submitButton = document.createElement('button');
+    usernameInput.type = 'text';
+    usernameInput.id = 'usernameInputLobby';
+    usernameInput.placeholder = 'Change your username';
+    usernameInput.value = sessionStorage.getItem('username') || 'Guest';
+
+    const setUsernameButton = document.createElement('button');
+    setUsernameButton.textContent = 'Set Username';
+    setUsernameButton.id = 'submit-button'
+
+    const handleUsernameUpdate = () => {
+        const newUsername = usernameInput.value.trim();
+        if (newUsername) {
+            yourUsername = newUsername;
+            sessionStorage.setItem('username', newUsername);
+            if (frontEndPlayers[socket.id]) {
+                frontEndPlayers[socket.id].username = newUsername;
+                socket.emit('updateUsername', frontEndPlayers[socket.id]);
+            }
+           
+        } else {
+            
+        }
+    };
+
+    setUsernameButton.addEventListener('click', handleUsernameUpdate);
+    usernameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleUsernameUpdate();
+        }
+    });
+        usernameGroup.append(usernameInput);
+
+    
     const listContainer = document.createElement('div');
     listContainer.id = 'playersList-container';
     const listTitle = document.createElement('h2');
-    const list = document.createElement('ul');
-    let readyButton = document.createElement('button');
-
-    title.textContent = 'MemTest' + state;
-    greetingOutput.id = 'greeting';
-    userLabel.textContent = 'Enter Your Username';
-    userLabel.htmlFor = 'usernameInput';
-    usernameInput.type = 'text';
-    usernameInput.id = 'usernameInput';
-    usernameInput.placeholder = 'e.g., PlayerOne';
-
-    if (frontEndPlayers[socket.id] && frontEndPlayers[socket.id].username !== 'Guest') {
-        usernameInput.value = frontEndPlayers[socket.id].username;
-        greetingOutput.textContent = `Welcome back, ${frontEndPlayers[socket.id].username}!`;
-    } else {
-        greetingOutput.textContent = 'Please enter a username to begin.';
-    }
-
-    submitButton.textContent = 'Set Username';
-    submitButton.id = 'submit-button';
-    list.id = 'playersList';
     listTitle.textContent = 'Players in Lobby';
+    const list = document.createElement('ul');
+    list.id = 'playersList';
 
-    // Populate list - this will be overwritten by 'Lobby' and 'update' events
-    // but useful for initial render if data is already present
-    for (const key in frontEndPlayers) {
-        if (frontEndPlayers[key].mode === mode) {
-            const player = frontEndPlayers[key];
-            const listItem = document.createElement('li');
-            if (key === socket.id) listItem.classList.add('you');
-            const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
-            const statusText = player.ready ? 'Ready' : 'Not Ready';
-            listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span class="${statusClass}">${statusText}</span>`;
-            list.appendChild(listItem);
-        }
-    }
-
+    let readyButton = document.createElement('button');
     readyButton.id = 'readyButton';
-    if (frontEndPlayers[socket.id] && frontEndPlayers[socket.id].ready) {
-        readyButton.textContent = 'Unready';
-        readyButton.classList.add('ready');
-    } else {
-        readyButton.textContent = 'Ready Up';
-        readyButton.classList.add('not-ready');
+    
+    let statusMessage = document.createElement('p');
+    statusMessage.id = 'statusMessage';
+
+    if (isInProgress) {
+        statusMessage.textContent = 'Game is in progress. Please wait for the next game.';
+        readyButton.style.display = 'none';
     }
 
-    submitButton.addEventListener('click', () => {
-        const username = usernameInput.value.trim();
-        if (username) {
-            greetingOutput.textContent = `Username set to: ${username}! 👋`;
-            if(frontEndPlayers[socket.id]) {
-                frontEndPlayers[socket.id].username = username;
-                socket.emit('updateUsername', frontEndPlayers[socket.id], mode);
-            }
-        } else {
-            greetingOutput.textContent = 'Please enter a valid username.';
-        }
-    });
+    listContainer.append(listTitle, list);
+    lobbyContainer.append(title, lobbyLink, usernameGroup, setUsernameButton, statusMessage, listContainer, readyButton);
+    screen.appendChild(lobbyContainer);
 
-    usernameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            submitButton.click();
-        }
-    });
-
+    readyButton.textContent = 'Ready Up';
+    readyButton.classList.add('not-ready');
+    
     readyButton.addEventListener('click', () => {
         if(frontEndPlayers[socket.id]) {
             frontEndPlayers[socket.id].ready = !frontEndPlayers[socket.id].ready;
-            socket.emit('ready', frontEndPlayers[socket.id], socket.id, mode);
+            socket.emit('ready', frontEndPlayers[socket.id], socket.id);
         }
     });
-
-    formGroup.append(userLabel, usernameInput);
-    listContainer.append(listTitle, list);
-    loginContainer.append(title, greetingOutput, formGroup, submitButton, listContainer, readyButton);
-    screen.appendChild(loginContainer);
 }
 
 function createContainer(id, parentElement) {
@@ -251,29 +196,26 @@ function createContainer(id, parentElement) {
     }
     p1.textContent = 'Lives: ' + frontEndPlayers[id].lives;
     p2.textContent = 'Score: ' + frontEndPlayers[id].score;
-    temp.appendChild(p0)
-    temp.appendChild(p1);
-    temp.appendChild(p2);
-    temp.appendChild(p3);
+    temp.append(p0, p1, p2, p3);
     gridContainer.appendChild(temp);
     parentElement.appendChild(gridContainer);
 }
 
 function createGrid(x, id) {
-    const gridContainer = document.querySelector('.grid-container[data-id="' + id + '"]');
+    const gridContainer = document.querySelector(`.grid-container[data-id="${id}"]`);
     const grid = document.createElement('div');
     grid.className = 'grid';
     grid.dataset.id = id;
-    var length = Object.keys(frontEndPlayers).length;
-    var size = Math.min(gridContainer.clientHeight * 0.9, (screen.clientWidth / (length <= 3 ? length : Math.ceil(length / 2)) * 0.6));
+    const activePlayerCount = Object.values(frontEndPlayers).filter(p => !p.isSpectator).length;
+    const size = Math.min(gridContainer.clientHeight * 0.9, (screen.clientWidth / (activePlayerCount <= 3 ? activePlayerCount : Math.ceil(activePlayerCount / 2)) * 0.6));
     grid.style.width = size + 'px';
     gridContainer.appendChild(grid);
     for (let i = 0; i < x; i++) {
         for (let j = 0; j < x; j++) {
             const cell = document.createElement('div');
             cell.className = 'newCell';
-            cell.style.width = 1 / x * 100 + '%';
-            cell.style.height = 1 / x * 100 + "%";
+            cell.style.width = `${100 / x}%`;
+            cell.style.height = `${100 / x}%`;
             cell.style.gridArea = (i * x + j + 1);
             cell.dataset.id = id;
             grid.appendChild(cell);
@@ -283,19 +225,15 @@ function createGrid(x, id) {
 
 function generateCorrect(id) {
     frontEndPlayers[id].correctData.forEach(index => {
-        const cell = document.querySelector('.newCell[style*="grid-area: ' + index + '"][data-id="' + id + '"]');
-        if (cell) {
-            cell.style.backgroundColor = '#ff0';
-        }
+        const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
+        if (cell) cell.style.backgroundColor = '#ff0';
     });
     setTimeout(() => {
         frontEndPlayers[id].correctData.forEach(index => {
-            const cell = document.querySelector('.newCell[style*="grid-area: ' + index + '"][data-id="' + id + '"]');
-            if (cell) {
-                if (cell.style.backgroundColor != '#0f0' || cell.style.backgroundColor != '#f00') {
-                    cell.style.transition = 'background-color 0.5s ease';
-                    cell.style.backgroundColor = '#444';
-                }
+            const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
+            if (cell && !['#0f0', '#f00'].includes(cell.style.backgroundColor)) {
+                cell.style.transition = 'background-color 0.5s ease';
+                cell.style.backgroundColor = '#444';
             }
         });
     }, 3000);
@@ -303,20 +241,27 @@ function generateCorrect(id) {
 
 function renderGameScreen(players, data, gridRow, isNewGame) {
     screen.innerHTML = '';
-    const playerIds = Object.keys(players);
+      
+
+    const activePlayers = Object.fromEntries(Object.entries(players).filter(([_, p]) => !p.isSpectator));
+    const playerIds = Object.keys(activePlayers);
     const playerCount = playerIds.length;
+    console.log(playerCount + 5);
+    
     for (const id in players) {
-        if (isNewGame) {
-            frontEndPlayers[id].score = 0;
-            frontEndPlayers[id].lives = 3;
+        if(frontEndPlayers[id]){
+            if (isNewGame) {
+                frontEndPlayers[id].score = 0;
+                frontEndPlayers[id].lives = 3;
+            }
+            if (frontEndPlayers[id].lives > 0) frontEndPlayers[id].chances = 3;
+            frontEndPlayers[id].cellsClicked = [];
+            frontEndPlayers[id].correctData = structuredClone(data);
         }
-        if (frontEndPlayers[id].lives > 0) {
-            frontEndPlayers[id].chances = 3;
-        }
-        frontEndPlayers[id].cellsClicked = [];
-        frontEndPlayers[id].correctData = structuredClone(data);
     }
-    if (playerCount > 3) {
+    
+        if (playerCount > 3) {
+            screen.style.flexDirection = 'column'; 
         screen.className = 'game-screen-two-rows';
         const topRow = document.createElement('div');
         topRow.className = 'game-row';
@@ -331,6 +276,7 @@ function renderGameScreen(players, data, gridRow, isNewGame) {
         });
     } else {
         screen.className = 'game-screen-single-row';
+screen.style.flexDirection = 'row'; 
         playerIds.forEach((id) => {
             renderPlayerGrid(id, screen, gridRow);
         });
@@ -341,194 +287,139 @@ function renderGameScreen(players, data, gridRow, isNewGame) {
 
 function renderPlayerGrid(id, parentElement, gridRow) {
     createContainer(id, parentElement);
-    if (frontEndPlayers[id].lives > 0) {
-        createGrid(gridRow, id);
-    } else {
-        createGrid(gridRow, id);
-        const container = document.querySelector('.grid[data-id="' + id + '"]');
-        container.innerHTML = 'UDEAD!';
-        container.style.fontSize = '32px';
-        container.style.color = 'red';
-        container.style.display = 'flex';
-        container.style.alignItems = 'center';
-        container.style.justifyContent = 'center';
+    createGrid(gridRow, id);
+    if (frontEndPlayers[id].lives <= 0) {
+        const container = document.querySelector(`.grid[data-id="${id}"]`);
+        container.innerHTML = 'ELIMINATED!';
+        Object.assign(container.style, { fontSize: '32px', color: 'red', display: 'flex', alignItems: 'center', justifyContent: 'center' });
     }
 }
 
+// --- Socket Listeners ---
 socket.on('disconnected', (backEndPlayers, id) => {
     delete frontEndPlayers[id];
-    const container = document.querySelector('.grid-container[data-id="' + id + '"]');
-    if(container) {
+    const container = document.querySelector(`.grid-container[data-id="${id}"]`);
+    if (container) {
         container.innerHTML = '<h2>Player Disconnected</h2>';
+    } else {
+        const list = document.querySelector('#playersList');
+        const itemToRemove = list?.querySelector(`li[data-id="${id}"]`);
+        if (itemToRemove) list.removeChild(itemToRemove);
     }
 });
 
-socket.on('Lobby', (backEndPlayers, mode) => {
-    // Clear frontend players for the current mode to sync with backend
-    for(const id in frontEndPlayers) {
-        if(frontEndPlayers[id].mode === mode) {
-            delete frontEndPlayers[id];
-        }
+socket.on('updateLobby', (backEndPlayers) => {
+    Object.assign(frontEndPlayers, backEndPlayers);
+    const list = document.querySelector('#playersList');
+    if (!list) return;
+
+    list.innerHTML = '';
+    for (const key in frontEndPlayers) {
+        const player = frontEndPlayers[key];
+        const listItem = document.createElement('li');
+        listItem.dataset.id = key;
+        if (key === socket.id) listItem.classList.add('you');
+
+        const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
+        const statusText = player.ready ? 'Ready' : 'Not Ready';
+        const spectatorText = player.isSpectator ? ' (Spectating)' : '';
+        
+        listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}${spectatorText}</span> <span class="${statusClass}">${statusText}</span>`;
+        list.appendChild(listItem);
     }
-    // Add/update players from the backend
-    for (const id in backEndPlayers) {
-        frontEndPlayers[id] = { ...backEndPlayers[id] };
-    }
-    multiLobby(mode);
+
+    
 });
 
 socket.on('updateTime', (time) => {
     remainingTime = time;
-    let timer = document.querySelectorAll('.timer');
-    timer.forEach((t) => {
-        t.textContent = ' Time Left: ' + (time / 10).toFixed(1);
+    document.querySelectorAll('.timer').forEach(t => {
+        t.textContent = `Time Left: ${(time / 10).toFixed(1)}`;
     });
 });
 
 socket.on('nextRound', (player, players, correctData, level, rows, newGame) => {
     position = 0;
-    for (const id in players) {
-        if(frontEndPlayers[id]) {
-            frontEndPlayers[id].lives = players[id].lives;
-            frontEndPlayers[id].score = players[id].score;
-        }
-    }
+    Object.assign(frontEndPlayers, players);
     renderGameScreen(players, correctData, rows, newGame);
 });
 
 socket.on('score', (playerData, id) => {
-    if(frontEndPlayers[id]) {
-        frontEndPlayers[id].lives = playerData.lives;
-        frontEndPlayers[id].score = playerData.score;
-        const temp = document.querySelector('.text-container[data-id="' + id + '"]');
-        if (temp) {
-            temp.children[1].textContent = ' Lives: ' + playerData.lives;
-            temp.children[2].textContent = ' Score: ' + playerData.score;
-        }
-    }
-});
-
-socket.on('update', (backEndPlayers, id) => {
-    for (const p_id in backEndPlayers) {
-        if (frontEndPlayers[p_id]) {
-            frontEndPlayers[p_id].username = backEndPlayers[p_id].username;
-            frontEndPlayers[p_id].ready = backEndPlayers[p_id].ready;
-        }
-    }
-    const list = document.querySelector('#playersList');
-    if (list) {
-        list.innerHTML = '';
-        for (const key in backEndPlayers) {
-            const player = backEndPlayers[key];
-            const listItem = document.createElement('li');
-            if (key === socket.id) listItem.classList.add('you');
-            const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
-            const statusText = player.ready ? 'Ready' : 'Not Ready';
-            listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span class="${statusClass}">${statusText}</span>`;
-            list.appendChild(listItem);
-        }
-    }
-    const readyButton = document.querySelector('#readyButton');
-    if (readyButton && frontEndPlayers[socket.id]) {
-        if (frontEndPlayers[socket.id].ready) {
-            readyButton.textContent = 'Unready';
-            readyButton.classList.remove('not-ready');
-            readyButton.classList.add('ready');
-        } else {
-            readyButton.textContent = 'Ready Up';
-            readyButton.classList.remove('ready');
-            readyButton.classList.add('not-ready');
-        }
+    if(!frontEndPlayers[id]) return;
+    frontEndPlayers[id].lives = playerData.lives;
+    frontEndPlayers[id].score = playerData.score;
+    const temp = document.querySelector(`.text-container[data-id="${id}"]`);
+    if (temp) {
+        temp.children[1].textContent = 'Lives: ' + playerData.lives;
+        temp.children[2].textContent = 'Score: ' + playerData.score;
     }
 });
 
 socket.on('gameOver', (backEndPlayers) => {
     screen.innerHTML = '';
     screen.className = '';
-    const leaderboardContainer = document.createElement('div');
-    leaderboardContainer.className = 'leaderboard-container';
-    const title = document.createElement('h1');
-    title.textContent = 'Game Over';
-    const subtitle = document.createElement('h2');
-    subtitle.textContent = 'Final Scores';
-    const playersArray = Object.values(backEndPlayers);
-    playersArray.sort((a, b) => b.score - a.score);
+    const container = document.createElement('div');
+    container.className = 'leaderboard-container';
+    container.innerHTML = '<h1>Game Over</h1><h2>Final Scores</h2>';
+    const playersArray = Object.values(backEndPlayers).sort((a, b) => b.score - a.score);
     const playerList = document.createElement('ol');
     playersArray.forEach((player, index) => {
-        const playerEntry = document.createElement('li');
-        let medal = '';
-        if (index === 0) medal = '🏆 1ST';
-        else if (index === 1) medal = '🥈 2ND';
-        else if (index === 2) medal = '🥉 3RD';
-        else medal = `${index + 1}TH`;
-        playerEntry.textContent = `${medal} ${player.username} - ${player.score}`;
-        playerList.appendChild(playerEntry);
+        const medal = ['🥇 1ST', '🥈 2ND', '🥉 3RD'][index] || `${index + 1}TH`;
+        playerList.innerHTML += `<li>${medal} ${player.username} - ${player.score}</li>`;
     });
     const homeButton = document.createElement('button');
     homeButton.textContent = 'Return to Lobby';
-    homeButton.addEventListener('click', () => socket.emit('Lobby', frontEndPlayers[socket.id].username, frontEndPlayers[socket.id].mode));
-    leaderboardContainer.append(title, subtitle, playerList, homeButton);
-    screen.appendChild(leaderboardContainer);
+    homeButton.onclick = () => {
+        socket.emit('joinLobby', ROOM_ID, sessionStorage.getItem('username') || 'Guest');
+        multiLobby(GAME_MODE, false);
+    };
+    container.append(playerList, homeButton);
+    screen.appendChild(container);
 });
 
 socket.on('lostGame', (backEndPlayers, player) => {
-    const container = document.querySelector('.grid[data-id="' + player + '"]');
+    const container = document.querySelector(`.grid[data-id="${player}"]`);
     if(container) {
-        container.innerHTML = 'UTRASH!';
-        container.style.fontSize = '32px';
-        container.style.color = 'red';
-        container.style.display = 'flex';
-        container.style.alignItems = 'center';
-        container.style.justifyContent = 'center';
+        container.innerHTML = 'OUT!';
+        Object.assign(container.style, { fontSize: '32px', color: 'red', display: 'flex', alignItems: 'center', justifyContent: 'center' });
     }
 });
 
 socket.on('finished', (player, id) => {
     position++;
     if(frontEndPlayers[id]) frontEndPlayers[id].score = player.score;
-    const container = document.querySelector('.grid[data-id="' + id + '"]');
+    const container = document.querySelector(`.grid[data-id="${id}"]`);
     if(container){
-        container.innerHTML = 'DOPADOWN! <br>Position: ' + position;
-        container.style.fontSize = '32px';
-        container.style.color = 'lime';
-        container.style.display = 'flex';
-        container.style.alignItems = 'center';
-        container.style.justifyContent = 'center';
-        container.style.textAlign = 'center';
+        container.innerHTML = `FINISHED!<br>Position: ${position}`;
+        Object.assign(container.style, { fontSize: '32px', color: 'lime', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' });
     }
 });
 
 socket.on('cellClicked', (num, player) => {
-    const cell = document.querySelector('.newCell[style*="grid-area: ' + num + '"][data-id="' + player + '"]');
-    if (cell && frontEndPlayers[player] && !(frontEndPlayers[player].cellsClicked.includes(num))) {
-        frontEndPlayers[player].cellsClicked.push(num);
-        if (frontEndPlayers[player].correctData.includes(num)) {
-            cell.style.backgroundColor = '#0f0';
-            frontEndPlayers[player].correct += 1;
-            frontEndPlayers[player].correctData.splice(frontEndPlayers[player].correctData.indexOf(num), 1);
-            frontEndPlayers[player].score += 10;
-            if (frontEndPlayers[player].correctData.length === 0 && player === socket.id) {
-                socket.emit('wonRound', frontEndPlayers[player], player, currentGameMode);
-                return;
-            }
-        } else {
-            cell.style.backgroundColor = '#f00';
-            frontEndPlayers[player].chances -= 1;
-            if (frontEndPlayers[player].chances <= 0) {
-                frontEndPlayers[player].lives -= 1;
-            }
+    const cell = document.querySelector(`.newCell[style*="grid-area: ${num}"][data-id="${player}"]`);
+    const pData = frontEndPlayers[player];
+    if (!cell || !pData || pData.cellsClicked.includes(num)) return;
+
+    pData.cellsClicked.push(num);
+    const correctIndex = pData.correctData.indexOf(num);
+    if (correctIndex > -1) {
+        cell.style.backgroundColor = '#0f0';
+        pData.correctData.splice(correctIndex, 1);
+        pData.score += 10;
+        if (pData.correctData.length === 0 && player === socket.id) {
+            socket.emit('wonRound', pData, player);
+            return;
         }
+    } else {
+        cell.style.backgroundColor = '#f00';
+        pData.chances--;
+        if (pData.chances <= 0) pData.lives--;
     }
-    if (player === socket.id) {
-        socket.emit('updateScore', frontEndPlayers[player], player, currentGameMode);
-    };
+    
+    if (player === socket.id) socket.emit('updateScore', pData, player);
 });
 
-socket.on('check', (inProgress) => {
-    gameStatus = structuredClone(inProgress);
-    for (const key in gameStatus) {
-        if (gameStatus[key] === true) {
-            // Potentially disable buttons for games in progress
-        }
-    }
+socket.on('error', (message) => {
+    alert(`Server error: ${message}`);
+    window.location.href = '/multiplayer';
 });

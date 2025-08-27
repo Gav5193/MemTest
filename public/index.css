@@ -78,6 +78,7 @@ body {
     border: var(--border-retro);
     padding: 1rem;
     cursor: pointer;
+    width: 100%;
 }
 
 #login-container button:hover {

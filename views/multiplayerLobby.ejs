@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <title>MemTest - Lobby</title>
+    <link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="screen">
+        </div>
+
+       
+    
+    <script>
+        const ROOM_ID = "<%= roomId %>";
+        const IS_IN_PROGRESS = <%= inProgress %>;
+        const GAME_MODE = "<%= mode %>";
+    </script>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="/js/classes/player.js"> </script>
+    <script src="/js/eventListener.js">  </script>
+    <script src="/js/index.js"></script>
+ 
+    <script>
+        // Entry point for the lobby page
+        initializeLobby();
+    </script>
+</body>
+</html>
