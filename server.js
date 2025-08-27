@@ -94,7 +94,8 @@ io.on('connection', (socket) => {
         }
 
         socket.join(mode);
-        io.to(mode).emit('Lobby', players, mode);
+        io.to(mode).emit('Lobby', getPlayersInMode(mode), mode);
+
     }
     });
     socket.on('disconnect', () => {
@@ -155,7 +156,8 @@ io.on('connection', (socket) => {
             loadRound(id, true, mode);
         }
         else {
-            io.to(players[socket.id].mode).emit('update', players, socket.id);
+            io.to(players[socket.id].mode).emit('update', getPlayersInMode(players[socket.id].mode), socket.id);
+
         }
     });
 
@@ -264,7 +266,7 @@ io.on('connection', (socket) => {
                 }
                 clearInterval(roundTimer);
                 inProgress[players[socket.id].mode] = false;
-                io.to(players[socket.id].mode).emit('gameOver', players);
+                io.to(players[socket.id].mode).emit('gameOver', getPlayersInMode(players[socket.id].mode));
                 io.emit('check', inProgress);
                 return;
             }
@@ -301,7 +303,7 @@ io.on('connection', (socket) => {
             }
             }, 3000);
         }
-                io.to(players[socket.id].mode).emit('lostGame', players, player);
+                io.to(players[socket.id].mode).emit('lostGame', getPlayersInMode(players[socket.id].mode), player);
                 io.to(players[socket.id].mode).emit('score', players[player], player);
             }
 
@@ -349,7 +351,7 @@ function loadRound(player, isNewGame, currentmode) {
     timeOut(level, player);
     clearInterval(roundTimer);
     startRoundTimer(player, 23);
-    io.to(mode).emit('nextRound', player, players, correctData, level, gridRow, isNewGame);
+    io.to(mode).emit('nextRound', player, getPlayersInMode(mode), correctData, level, gridRow, isNewGame);
 }
 
 function finished(socketID) {
@@ -384,4 +386,13 @@ function startRoundTimer(id, time) {
         remainingTime--;
         io.to(mode).emit('updateTime', remainingTime);
     }, 100);
+}
+function getPlayersInMode(mode) {
+    const playersInMode = {};
+    for (const id in players) {
+        if (players[id].mode === mode) {
+            playersInMode[id] = players[id];
+        }
+    }
+    return playersInMode;
 }

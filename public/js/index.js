@@ -563,8 +563,10 @@ socket.on('score', (playerData, id) => {
 
 socket.on('update', (backEndPlayers, id) => {
     for (const id in backEndPlayers) {
+        if(frontEndPlayers[id]){
         frontEndPlayers[id].username = backEndPlayers[id].username;
         frontEndPlayers[id].ready = backEndPlayers[id].ready;
+        }
     }
     const list = document.querySelector('#playersList');
     list.innerHTML = ''; // Clear existing list items
