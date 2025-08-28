@@ -307,6 +307,10 @@ function renderPlayerGrid(id, parentElement, gridRow) {
 socket.on('disconnected', (backEndPlayers, id) => {
     delete frontEndPlayers[id];
     const container = document.querySelector(`.grid-container[data-id="${id}"]`);
+    for(const p in frontEndPlayers){
+        renderGameScreen(frontEndPlayers[p], false);
+        return;
+    }
     if (container) {
         container.innerHTML = '<h2>Player Disconnected</h2>';
     } else {
