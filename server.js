@@ -4,6 +4,7 @@ const http = require('http');
 const server = http.createServer(app);
 const { v4: uuidV4 } = require('uuid');
 const { Server } = require('socket.io');
+const { isKeyObject } = require('util/types');
 const io = new Server(server);
 
 const port = 3000;
@@ -45,7 +46,8 @@ app.get('/multiplayer/create/:mode', (req, res) => {
         level: 0,
         gridRow: 4,
         winner: null,
-        remainingTime: 0,
+        remainingTime: 10,
+        timer: 0,
         roundTimer: null,
         correctData: [],
         mode: mode
@@ -84,14 +86,20 @@ app.get('/multiplayer/room/:roomId', (req, res) => {
 
 
 function generateCorrect(mode, roomId) {
-    let i = 0;
+    
     const currentLobby = lobbyData[mode][roomId];
     currentLobby.correctData = [];
-    while (i < currentLobby.level + 2) {
-        var randomIndex = Math.ceil(Math.random() * (currentLobby.gridRow * currentLobby.gridRow));
-        if (!currentLobby.correctData.includes(randomIndex)) {
-            currentLobby.correctData.push(randomIndex);
-            i++;
+    for(let j = 0; j < currentLobby.targetLevel; j++){
+        currentLobby.level++;
+        currentLobby.gridRow = 4 + Math.ceil(currentLobby.level / 3);
+        let i = 0;
+        currentLobby.correctData.push([]);
+        while (i < currentLobby.level + 2) {
+            var randomIndex = Math.ceil(Math.random() * (currentLobby.gridRow * currentLobby.gridRow));
+            if (!currentLobby.correctData[j].includes(randomIndex)) {
+                currentLobby.correctData[j].push(randomIndex);
+                i++;
+            }
         }
     }
 }
@@ -122,25 +130,40 @@ io.on('connection', (socket) => {
         socket.mode = roomMode;
         
         if (!lobbyData[roomMode][roomId].inProgress){
+            clearInterval(lobbyData[roomMode][roomId].roundTimer)
+            var target = null;
+            if (roomMode === 'ten'){
+                target = 10;
+            }else if(roomMode === 'twenty'){
+                target = 20;
+            }
+            else{
+                target = 100;
+            }
             lobbyData[roomMode][roomId] = {
                 inProgress: false,
                 level: 0,
                 gridRow: 4,
                 winner: null,
-                remainingTime: 0,
+                remainingTime: 10,
                 roundTimer: null,
                 correctData: [],
-                mode: roomMode
+                mode: roomMode,
+                targetLevel: target,
+                timer: 0
             };
         players[roomId][socket.id] = {
+            level: 1,
             score: 0,
             cellsClicked: [],
             lives: 3,
+            gridRow: 4,
             chances: 3,
             username: username || 'Guest',
             ready: false,
             finished: false,
-            mode: roomMode
+            mode: roomMode,
+            timeFinished: undefined
         };
         
         // If the game is in progress, the new player is a spectator.
@@ -180,7 +203,7 @@ io.on('connection', (socket) => {
         }
 
         io.to(roomId).emit('disconnected', lobbyPlayers, socket.id);
-
+        /*
         let allFinished = true;
         for (const id in lobbyPlayers) {
             if (lobbyPlayers[id].finished === false) {
@@ -196,7 +219,7 @@ io.on('connection', (socket) => {
             setTimeout(() => {
                 loadRound(firstPlayerId, false, roomId);
             }, 3000);
-        }
+        }*/
     });
 
     socket.on('ready', (player, id) => {
@@ -209,7 +232,7 @@ io.on('connection', (socket) => {
         
         for (const p in lobbyPlayers) {
             // Spectators don't need to be ready to start the game.
-            if (!lobbyPlayers[p].ready && !lobbyPlayers[p].isSpectator) {
+            if (!lobbyPlayers[p].ready ) {
                 allReady = false;
                 break;
             }
@@ -217,11 +240,17 @@ io.on('connection', (socket) => {
 
         if (allReady) {
             lobbyData[mode][roomId].inProgress = true;
-            
+            generateCorrect(mode, roomId)
+            console.log(lobbyData[mode][roomId].correctData)
+            startGameTimer(0, roomId);
             for (const p in lobbyPlayers) {
-                lobbyPlayers[p].isSpectator = false;
+                //lobbyPlayers[p].isSpectator = false;
+                lobbyPlayers[p].correctData = lobbyData[mode][roomId].correctData
+                loadRound(p, true, roomId);
             }
-            loadRound(id, true, roomId);
+           
+            
+            
         } else {
             io.to(roomId).emit('updateLobby', lobbyPlayers);
         }
@@ -240,32 +269,48 @@ io.on('connection', (socket) => {
         if (!roomId || !mode || !lobbyData[mode][roomId]) return;
 
         const lobbyPlayers = players[roomId];
-        if (lobbyPlayers && lobbyPlayers[player]) {
-            const currentLobby = lobbyData[mode][roomId];
-            if (currentLobby.winner === null) {
-                currentLobby.winner = player;
-                lobbyPlayers[player].score += currentLobby.level * 10;
-            }
-            lobbyPlayers[player].finished = true;
+        lobbyPlayers[player].level++;
+        
 
-            let allFinished = true;
+        const currentLobby = lobbyData[mode][roomId];
+        let allFinished = true;
+        if (lobbyPlayers && lobbyPlayers[player]) {
+            if (lobbyPlayers[player].level == currentLobby.targetLevel) {
+                currentLobby.winner = player;
+                lobbyPlayers[player].finished = true;
+                lobbyPlayers[player].timeFinished = currentLobby.timer;
+            }
+            
             for (const id in lobbyPlayers) {
                 if (lobbyPlayers[id].finished === false) {
                     allFinished = false;
                     break;
                 }
             }
-
-            io.to(roomId).emit('finished', lobbyPlayers[player], player);
-
-            if (allFinished && currentLobby.remainingTime > 30) {
-                clearInterval(currentLobby.roundTimer);
-                startRoundTimer(player, 3, roomId);
-                setTimeout(() => {
-                    loadRound(player, false, roomId);
-                }, 3000);
-            }
         }
+        if (allFinished){
+            currentLobby.inProgress = false;
+            io.to(roomId).emit('gameOver', lobbyPlayers, mode)
+            return;
+        }
+        if (lobbyPlayers[player].finished === true){
+            io.to(roomId).emit('finished', lobbyPlayers[player], player);
+            
+              if (mode !== 'endless'){
+                    setTimeout(() => {
+                        for(const p in lobbyPlayers){
+                            if(lobbyPlayers[p].finished === false){
+                                lobbyPlayers[p].timeFinished = currentLobby.timer;
+                            }
+                        }
+                        currentLobby.inProgress = false;
+                        io.to(roomId).emit('gameOver', lobbyPlayers, mode);
+                    }, 10000);
+                }
+            return;
+        }
+        
+        loadRound(player, false, roomId)
     });
 
     socket.on('updateScore', (playerData, player) => {
@@ -281,44 +326,31 @@ io.on('connection', (socket) => {
             lobbyPlayers[socket.id].chances = playerData.chances;
 
             let allDeadInGame = true;
-            let allDeadInRound = true;
+            
             for (const key in lobbyPlayers) {
                 if (lobbyPlayers[key].lives >= 1) allDeadInGame = false;
-                if (lobbyPlayers[key].chances >= 1) allDeadInRound = false;
+                
             }
 
             if (allDeadInGame) {
-                for (const p in lobbyPlayers) lobbyPlayers[p].ready = false;
+                for (const p in lobbyPlayers) {
+                    lobbyPlayers[p].ready = false
+                    lobbyPlayers[p].timeFinished = currentLobby.timer
+                }
                 clearInterval(currentLobby.roundTimer);
                 currentLobby.inProgress = false;
-                io.to(roomId).emit('gameOver', lobbyPlayers);
+                io.to(roomId).emit('gameOver', lobbyPlayers, mode);
                 return;
             }
 
-            if (allDeadInRound && player === socket.id && currentLobby.remainingTime > 30) {
-                clearInterval(currentLobby.roundTimer);
-                startRoundTimer(socket.id, 3, roomId);
-                setTimeout(() => {
-                    if (lobbyPlayers[socket.id]) loadRound(player, false, roomId);
-                }, 3000);
-            }
+           
 
             if (lobbyPlayers[player].chances <= 0) {
-                lobbyPlayers[player].finished = true;
-                let roundOver = true;
-                for (const id in lobbyPlayers) {
-                    if (lobbyPlayers[id].finished === false) roundOver = false;
-                }
-                if (roundOver && currentLobby.remainingTime > 30) {
-                    clearInterval(currentLobby.roundTimer);
-                    startRoundTimer(socket.id, 3, roomId);
-                    setTimeout(() => {
-                        if (lobbyPlayers[player]) loadRound(player, false, roomId);
-                    }, 3000);
-                }
+                loadRound(player, false, roomId);
                 io.to(roomId).emit('lostGame', lobbyPlayers, player);
+              
             }
-            io.to(roomId).emit('score', lobbyPlayers[socket.id], socket.id);
+            
         }
     });
 });
@@ -341,56 +373,36 @@ function loadRound(player, isNewGame, roomId) {
         if (lobbyPlayers[id].lives > 0) allDead = false;
     }
     if (allDead) {
-        io.to(roomId).emit('gameOver', lobbyPlayers);
         currentLobby.inProgress = false;
+        io.to(roomId).emit('gameOver', lobbyPlayers, mode);
+        
         return;
     }
 
-    currentLobby.level++;
-    currentLobby.gridRow = 4 + Math.ceil(currentLobby.level / 3);
-    if (currentLobby.gridRow > 9) currentLobby.gridRow = 9;
+    // Loadgrid
+    lobbyPlayers[player].gridRow = 4 + Math.ceil(lobbyPlayers[player].level / 3);
+    if (lobbyPlayers[player].gridRow > 9) lobbyPlayers[player].gridRow = 9;
 
-    generateCorrect(mode, roomId);
-
-    for (const p in lobbyPlayers) {
-        lobbyPlayers[p].cellsClicked = [];
-        lobbyPlayers[p].ready = false;
-        if (lobbyPlayers[p].lives > 0) {
-            lobbyPlayers[p].finished = false;
-            lobbyPlayers[p].chances = 3;
-        }
+    // Reset Player attributes
+    lobbyPlayers[player].cellsClicked = [];
+    lobbyPlayers[player].ready = false;
+    if (lobbyPlayers[player].lives > 0) {
+        lobbyPlayers[player].chances = 3;
     }
+    
 
-    timeOut(currentLobby.level, player, roomId, mode);
-    clearInterval(currentLobby.roundTimer);
-    startRoundTimer(player, 23, roomId);
-    io.to(roomId).emit('nextRound', player, lobbyPlayers, currentLobby.correctData, currentLobby.level, currentLobby.gridRow, isNewGame);
+    //timeOut(currentLobby.level, player, roomId, mode);
+    //clearInterval(currentLobby.roundTimer);
+    //startRoundTimer(player, 23, roomId);
+    io.to(roomId).emit('nextRound', player, lobbyPlayers, isNewGame);
 }
 
-function finished(socketID, roomId) {
-    const lobbyPlayers = players[roomId];
-    if (lobbyPlayers && lobbyPlayers[socketID]) {
-        for (const id in lobbyPlayers) {
-            if (lobbyPlayers[id].finished !== true && lobbyPlayers[id].lives > 0) {
-                lobbyPlayers[id].lives -= 1;
-            }
-        }
-    }
-}
 
-function timeOut(preLevel, player, roomId, mode) {
-    setTimeout(() => {
-        const currentLobby = lobbyData[mode] ? lobbyData[mode][roomId] : null;
-        if (currentLobby && currentLobby.level === preLevel) {
-            if (players[roomId] && players[roomId][player]) {
-                finished(player, roomId);
-                loadRound(player, false, roomId);
-            }
-        }
-    }, 23000);
-}
+ 
 
-function startRoundTimer(id, time, roomId) {
+
+
+function startGameTimer(time, roomId) {
     let mode;
     for (const m in lobbyData) {
         if (lobbyData[m][roomId]) { mode = m; break; }
@@ -398,12 +410,8 @@ function startRoundTimer(id, time, roomId) {
     if (!mode) return;
 
     const currentLobby = lobbyData[mode][roomId];
-    currentLobby.remainingTime = time * 10;
     currentLobby.roundTimer = setInterval(() => {
-        if (currentLobby.remainingTime <= 0) {
-            clearInterval(currentLobby.roundTimer);
-        }
-        currentLobby.remainingTime--;
-        io.to(roomId).emit('updateTime', currentLobby.remainingTime);
+        currentLobby.timer++;
+        io.to(roomId).emit('updateTime', currentLobby.timer);
     }, 100);
 }

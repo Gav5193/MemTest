@@ -3,9 +3,8 @@ const socket = io({ autoConnect: false });
 const screen = document.querySelector('#screen');
 let currentGameMode = '';
 
-var gridRow = 0;
-var level = 0;
-var remainingTime = 0;
+
+var timeElapsed = 0;
 var position = 0;
 var yourUsername = '';
 var state = "";
@@ -69,19 +68,20 @@ function home() {
     container();
     getUsername();
     const loginContainer = document.querySelector("#login-container");
-    const singleButton = document.createElement('button');
+    
     const multiButton = document.createElement('button');
-    singleButton.textContent = "Singleplayer Mode";
-    multiButton.textContent = "Multiplayer Mode";
+   
+    multiButton.textContent = "Play";
     
     multiButton.addEventListener('click', () => {
         if (sessionStorage.getItem('username')) {
             window.location.href = '/multiplayer';
+
         } else {
             alert('Please set a username first.');
         }
     });
-    loginContainer.append(singleButton, multiButton);
+    loginContainer.append(multiButton);
 }
 
 function multiLobby(mode, isInProgress) {
@@ -115,9 +115,16 @@ function multiLobby(mode, isInProgress) {
     usernameInput.placeholder = 'Change your username';
     usernameInput.value = sessionStorage.getItem('username') || 'Guest';
 
+    
     const setUsernameButton = document.createElement('button');
     setUsernameButton.textContent = 'Set Username';
     setUsernameButton.id = 'submit-button'
+
+    const homeButton = document.createElement('button')
+    homeButton.textContent = 'Back to Home';
+    homeButton.addEventListener('click', () => {
+        window.location.href = '/'
+        });
 
     const handleUsernameUpdate = () => {
         const newUsername = usernameInput.value.trim();
@@ -135,12 +142,13 @@ function multiLobby(mode, isInProgress) {
     };
 
     setUsernameButton.addEventListener('click', handleUsernameUpdate);
+
     usernameInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             handleUsernameUpdate();
         }
     });
-        usernameGroup.append(usernameInput);
+    usernameGroup.append(usernameInput);
 
     
     const listContainer = document.createElement('div');
@@ -156,7 +164,7 @@ function multiLobby(mode, isInProgress) {
    
 
     listContainer.append(listTitle, list);
-    lobbyContainer.append(title, lobbyLink, usernameGroup, setUsernameButton,  listContainer, readyButton);
+    lobbyContainer.append(title, lobbyLink, usernameGroup, setUsernameButton, homeButton,  listContainer, readyButton);
     screen.appendChild(lobbyContainer);
 
     readyButton.textContent = 'Ready Up';
@@ -174,36 +182,47 @@ function createContainer(id, parentElement) {
     const gridContainer = document.createElement('div');
     gridContainer.className = 'grid-container';
     gridContainer.dataset.id = id;
+    if(socket.id === id){
+        gridContainer.classList.add('is-you')
+    }
     const temp = document.createElement('div');
     temp.className = 'text-container';
     temp.dataset.id = id;
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    grid.dataset.id = id;
+    gridContainer.append(temp, grid)
+    parentElement.appendChild(gridContainer);
+}
+
+function generateText(id){
+    
+    const textContainer = document.querySelector(`.text-container[data-id="${id}"]`);
+    textContainer.innerHTML = ''
     const p0 = document.createElement('p');
     const p1 = document.createElement('p');
     const p2 = document.createElement('p');
     const p3 = document.createElement('p');
     p3.className = 'timer';
     if (socket.id === id) {
-        gridContainer.classList.add('is-you');
+      
         p0.textContent = frontEndPlayers[id].username + " (YOU)";
     } else {
         p0.textContent = frontEndPlayers[id].username;
     }
     p1.textContent = 'Lives: ' + frontEndPlayers[id].lives;
-    p2.textContent = 'Score: ' + frontEndPlayers[id].score;
-    temp.append(p0, p1, p2, p3);
-    gridContainer.appendChild(temp);
-    parentElement.appendChild(gridContainer);
+    p2.textContent = 'Level: ' + frontEndPlayers[id].level;
+    textContainer.append(p0, p1, p2, p3);
+    
 }
-
 function createGrid(x, id) {
-    const gridContainer = document.querySelector(`.grid-container[data-id="${id}"]`);
-    const grid = document.createElement('div');
-    grid.className = 'grid';
-    grid.dataset.id = id;
+    const gridContainer = document.querySelector(`.grid-container[data-id="${id}"]`)
+    const grid = document.querySelector(`.grid[data-id="${id}"]`);
+    grid.innerHTML = ''
     const activePlayerCount = Object.values(frontEndPlayers).filter(p => !p.isSpectator).length;
     const size = Math.min(gridContainer.clientHeight * 0.9, (screen.clientWidth / (activePlayerCount <= 3 ? activePlayerCount : Math.ceil(activePlayerCount / 2)) * 0.6));
     grid.style.width = size + 'px';
-    gridContainer.appendChild(grid);
+    
     for (let i = 0; i < x; i++) {
         for (let j = 0; j < x; j++) {
             const cell = document.createElement('div');
@@ -218,12 +237,17 @@ function createGrid(x, id) {
 }
 
 function generateCorrect(id) {
-    frontEndPlayers[id].correctData.forEach(index => {
+
+    if(socket.id === id){
+    let level = frontEndPlayers[id].level 
+    frontEndPlayers[id].correctData[level-1].forEach(index => {
         const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
         if (cell) cell.style.backgroundColor = '#ff0';
     });
-    setTimeout(() => {
-        frontEndPlayers[id].correctData.forEach(index => {
+
+    frontEndPlayers[id].listener = setTimeout(() => {
+
+        frontEndPlayers[id].correctData[level-1].forEach(index => {
             const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
             if (cell && !['#0f0', '#f00'].includes(cell.style.backgroundColor)) {
                 cell.style.transition = 'background-color 0.5s ease';
@@ -231,29 +255,18 @@ function generateCorrect(id) {
             }
         });
     }, 3000);
+    }
 }
 
-function renderGameScreen(players, data, gridRow, isNewGame) {
+function renderGameScreen(player, isNewGame) { // Player refers to playerID
     screen.innerHTML = '';
       
 
-    const activePlayers = Object.fromEntries(Object.entries(players).filter(([_, p]) => !p.isSpectator));
+    const activePlayers = Object.fromEntries(Object.entries(frontEndPlayers).filter(([_, p]) => !p.isSpectator));
     const playerIds = Object.keys(activePlayers);
     const playerCount = playerIds.length;
-    console.log(playerCount + 5);
     
-    for (const id in players) {
-        if(frontEndPlayers[id]){
-            if (isNewGame) {
-                frontEndPlayers[id].score = 0;
-                frontEndPlayers[id].lives = 3;
-            }
-            if (frontEndPlayers[id].lives > 0) frontEndPlayers[id].chances = 3;
-            frontEndPlayers[id].cellsClicked = [];
-            frontEndPlayers[id].correctData = structuredClone(data);
-        }
-    }
-    
+     console.log(playerCount)
         if (playerCount > 3) {
             screen.style.flexDirection = 'column'; 
         screen.className = 'game-screen-two-rows';
@@ -266,13 +279,13 @@ function renderGameScreen(players, data, gridRow, isNewGame) {
         const splitIndex = Math.ceil(playerCount / 2);
         playerIds.forEach((id, index) => {
             const parentRow = index < splitIndex ? topRow : bottomRow;
-            renderPlayerGrid(id, parentRow, gridRow);
+            renderPlayerGrid(id, parentRow, frontEndPlayers[id].gridRow);
         });
     } else {
         screen.className = 'game-screen-single-row';
-screen.style.flexDirection = 'row'; 
+        screen.style.flexDirection = 'row'; 
         playerIds.forEach((id) => {
-            renderPlayerGrid(id, screen, gridRow);
+            renderPlayerGrid(id, screen, frontEndPlayers[id].gridRow);
         });
     }
     generateCorrect(socket.id);
@@ -281,11 +294,12 @@ screen.style.flexDirection = 'row';
 
 function renderPlayerGrid(id, parentElement, gridRow) {
     createContainer(id, parentElement);
+    generateText(id);
     createGrid(gridRow, id);
     if (frontEndPlayers[id].lives <= 0) {
         const container = document.querySelector(`.grid[data-id="${id}"]`);
-        container.innerHTML = 'ELIMINATED!';
-        Object.assign(container.style, { fontSize: '32px', color: 'red', display: 'flex', alignItems: 'center', justifyContent: 'center' });
+        container.innerHTML = 'UTRASH!';
+        Object.assign(container.style, { fontSize: '3vw', color: 'red', display: 'flex', alignItems: 'center', justifyContent: 'center' });
     }
 }
 
@@ -326,40 +340,51 @@ socket.on('updateLobby', (backEndPlayers) => {
 });
 
 socket.on('updateTime', (time) => {
-    remainingTime = time;
+     timeElapsed = time;
     document.querySelectorAll('.timer').forEach(t => {
-        t.textContent = `Time Left: ${(time / 10).toFixed(1)}`;
+        t.textContent = `Time elapsed: ${(time / 10).toFixed(1)}`;
     });
 });
 
-socket.on('nextRound', (player, players, correctData, level, rows, newGame) => {
+socket.on('nextRound', (player, players, newGame) => {
     position = 0;
+    clearTimeout(frontEndPlayers[player].listener)
     Object.assign(frontEndPlayers, players);
-    renderGameScreen(players, correctData, rows, newGame);
-});
+    if(newGame){
+    renderGameScreen(player, newGame);
+    }
+    else{
+        if (player === socket.id){
+            generateText(player);
+            createGrid(frontEndPlayers[player].gridRow, player);
+            generateCorrect(socket.id);
 
-socket.on('score', (playerData, id) => {
-    if(!frontEndPlayers[id]) return;
-    frontEndPlayers[id].lives = playerData.lives;
-    frontEndPlayers[id].score = playerData.score;
-    const temp = document.querySelector(`.text-container[data-id="${id}"]`);
-    if (temp) {
-        temp.children[1].textContent = 'Lives: ' + playerData.lives;
-        temp.children[2].textContent = 'Score: ' + playerData.score;
+            attach();
+        }
+        else{
+            generateText(player);
+            createGrid(frontEndPlayers[player].gridRow,player);
+        }
     }
 });
 
-socket.on('gameOver', (backEndPlayers) => {
+
+
+socket.on('gameOver', (backEndPlayers,mode) => {
     screen.innerHTML = '';
     screen.className = '';
     const container = document.createElement('div');
     container.className = 'leaderboard-container';
     container.innerHTML = '<h1>Game Over</h1><h2>Final Scores</h2>';
-    const playersArray = Object.values(backEndPlayers).sort((a, b) => b.score - a.score);
+   
+   
+        playersArray = Object.values(backEndPlayers).sort((a, b) => b.level - a.level || a.timeFinished - b.timeFinished)
+    
     const playerList = document.createElement('ol');
     playersArray.forEach((player, index) => {
         const medal = ['🥇 1ST', '🥈 2ND', '🥉 3RD'][index] || `${index + 1}TH`;
-        playerList.innerHTML += `<li>${medal} ${player.username} - ${player.score}</li>`;
+        playerList.innerHTML += `<li>${medal} ${player.username} Lvl: ${player.level} - Time: ${player.timeFinished}</li>`;
+
     });
     const homeButton = document.createElement('button');
     homeButton.textContent = 'Return to Lobby';
@@ -371,21 +396,38 @@ socket.on('gameOver', (backEndPlayers) => {
     screen.appendChild(container);
 });
 
-socket.on('lostGame', (backEndPlayers, player) => {
-    const container = document.querySelector(`.grid[data-id="${player}"]`);
-    if(container) {
-        container.innerHTML = 'OUT!';
-        Object.assign(container.style, { fontSize: '32px', color: 'red', display: 'flex', alignItems: 'center', justifyContent: 'center' });
-    }
-});
+
 
 socket.on('finished', (player, id) => {
-    position++;
-    if(frontEndPlayers[id]) frontEndPlayers[id].score = player.score;
+    position++
+    if(frontEndPlayers[id]){
+        frontEndPlayers[id].level = player.level;
+        frontEndPlayers[id].finished = player.finished;
+        
+    } 
+    
+    const temp = document.querySelector(`.text-container[data-id="${id}"]`)
+
+    temp.innerHTML = '';
     const container = document.querySelector(`.grid[data-id="${id}"]`);
-    if(container){
-        container.innerHTML = `FINISHED!<br>Position: ${position}`;
-        Object.assign(container.style, { fontSize: '32px', color: 'lime', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' });
+    if(container && temp){
+ const p0 = document.createElement('p');
+    const p1 = document.createElement('p');
+    const p2 = document.createElement('p');
+    const p3 = document.createElement('p');
+    p3.className = 'timer';
+    if (socket.id === id) {
+        
+        p0.textContent = frontEndPlayers[id].username + " (YOU)";
+    } else {
+        p0.textContent = frontEndPlayers[id].username;
+    }
+    p1.textContent = 'Lives: ' + frontEndPlayers[id].lives;
+    p2.textContent = 'Level: ' + frontEndPlayers[id].level;
+    temp.append(p0, p1, p2, p3);
+        container.innerHTML = `DOPADOWN!<br>Position: ${position}`;
+        Object.assign(container.style, { fontSize: '3vw', color: 'lime', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' });
+        
     }
 });
 
@@ -395,12 +437,14 @@ socket.on('cellClicked', (num, player) => {
     if (!cell || !pData || pData.cellsClicked.includes(num)) return;
 
     pData.cellsClicked.push(num);
-    const correctIndex = pData.correctData.indexOf(num);
+    const correctIndex = pData.correctData[pData.level-1].indexOf(num);
     if (correctIndex > -1) {
         cell.style.backgroundColor = '#0f0';
-        pData.correctData.splice(correctIndex, 1);
+        pData.correctData[pData.level-1].splice(correctIndex, 1);
         pData.score += 10;
-        if (pData.correctData.length === 0 && player === socket.id) {
+        if (pData.correctData[pData.level-1].length === 0 && player === socket.id) {
+            pData.level++;
+            
             socket.emit('wonRound', pData, player);
             return;
         }
@@ -409,7 +453,6 @@ socket.on('cellClicked', (num, player) => {
         pData.chances--;
         if (pData.chances <= 0) pData.lives--;
     }
-    
     if (player === socket.id) socket.emit('updateScore', pData, player);
 });
 

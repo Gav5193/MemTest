@@ -10,5 +10,7 @@ class Player {
         this.playerNumber = num;
         this.ready = false;
         this.mode = mode;
+        this.level = 1;
+        this.listener = null;
     }
 }
