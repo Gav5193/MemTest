@@ -202,7 +202,7 @@ io.on('connection', (socket) => {
             return;
         }
 
-        io.to(roomId).emit('disconnected', lobbyPlayers, socket.id);
+        io.to(roomId).emit('disconnected', lobbyPlayers, socket.id, lobbyData[mode][roomId].inProgress);
         /*
         let allFinished = true;
         for (const id in lobbyPlayers) {
