@@ -6,7 +6,8 @@ let currentGameMode = '';
 
 var timeElapsed = 0;
 var position = 0;
-var yourUsername = '';
+var yourUsername = 'guest';
+
 var state = "";
 const frontEndPlayers = {};
 

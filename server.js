@@ -4,7 +4,8 @@ const http = require('http');
 const server = http.createServer(app);
 const { v4: uuidV4 } = require('uuid');
 const { Server } = require('socket.io');
-const { isKeyObject } = require('util/types');
+
+const db = require('./db/queries');
 const io = new Server(server);
 
 const port = 3000;
@@ -111,7 +112,11 @@ server.listen(port, () => {
 
 io.on('connection', (socket) => {
 
-    socket.on('joinLobby', (roomId, username) => {
+    socket.on('joinLobby', async (roomId, username) => {
+        await db.insertUsername(username);
+
+        const name = await db.getAllUsernames();
+        console.log("Usernames: ", name)
         let roomMode = null;
         for (const mode in lobbyData) {
             if (lobbyData[mode][roomId]) {
