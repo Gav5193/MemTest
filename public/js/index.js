@@ -272,33 +272,28 @@ function createGrid(x, id) {
  
 }
 
-
 function generateCorrect(id) {
-    if (socket.id === id) {
+
+    if(socket.id === id){
+    let level = frontEndPlayers[id].level 
+    frontEndPlayers[id].correctData[level-1].forEach(index => {
+        const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
+        if (cell) cell.style.backgroundColor = '#ede8d0';
+    });
+
+    frontEndPlayers[id].listener = setTimeout(() => {
+        
         const pData = frontEndPlayers[id];
-        const currentLevel = pData.level;
-        // Make a copy of the correct data for this specific level
-        const correctIndicesForLevel = [...pData.correctData[currentLevel - 1]];
-
-        // Show the correct squares
-        correctIndicesForLevel.forEach(index => {
+        pData.correctData[level-1].forEach(index => {
+            if (!pData.cellsClicked.includes(index)) {
             const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
-            if (cell) cell.style.backgroundColor = '#ede8d0';
+            if (cell ) {
+                cell.style.transition = 'background-color 0.5s ease';
+                cell.style.backgroundColor = '#222222';
+            }
+        }
         });
-
-        // This timeout is now self-contained and will not be affected by the next round starting.
-        pData.listener = setTimeout(() => {
-            // It uses the variables defined above, not the global player state.
-            correctIndicesForLevel.forEach(index => {
-                if (!pData.cellsClicked.includes(index)) { // Check against the latest pData state
-                    const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
-                    if (cell) {
-                        cell.style.transition = 'background-color 0.5s ease';
-                        cell.style.backgroundColor = '#222222';
-                    }
-                }
-            });
-        }, 3000);
+    }, 3000);
     }
 }
 
