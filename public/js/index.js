@@ -226,13 +226,15 @@ function generateText(id){
     
 }
 function createGrid(x, id) {
+
     const gridContainer = document.querySelector(`.grid-container[data-id="${id}"]`)
     const grid = document.querySelector(`.grid[data-id="${id}"]`);
     grid.innerHTML = ''
-    const activePlayerCount = Object.values(frontEndPlayers).filter(p => !p.isSpectator).length;
+    const activePlayerCount = Object.values(frontEndPlayers).length
     const size = Math.min(gridContainer.clientHeight * 0.9, (screen.clientWidth / (activePlayerCount <= 3 ? activePlayerCount : Math.ceil(activePlayerCount / 2)) * 0.6));
     grid.style.width = size + 'px';
     
+    if (frontEndPlayers[id].lives > 0){
     for (let i = 0; i < x; i++) {
         for (let j = 0; j < x; j++) {
             const cell = document.createElement('div');
@@ -243,7 +245,13 @@ function createGrid(x, id) {
             cell.dataset.id = id;
             grid.appendChild(cell);
         }
-    }
+    }}
+    else{
+        
+        const container = document.querySelector(`.grid[data-id="${id}"]`);
+        container.innerHTML = 'UTRASH!';
+        Object.assign(container.style, { fontSize: '3vw', color: 'red', display: 'flex', alignItems: 'center', justifyContent: 'center' });
+        }
 }
 
 function generateCorrect(id) {
@@ -256,13 +264,15 @@ function generateCorrect(id) {
     });
 
     frontEndPlayers[id].listener = setTimeout(() => {
-
-        frontEndPlayers[id].correctData[level-1].forEach(index => {
+        const pData = frontEndPlayers[id];
+        pData.correctData[level-1].forEach(index => {
+            if (!pData.cellsClicked.includes(index)) {
             const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
-            if (cell && !['#0f0', '#f00'].includes(cell.style.backgroundColor)) {
+            if (cell ) {
                 cell.style.transition = 'background-color 0.5s ease';
                 cell.style.backgroundColor = '#444';
             }
+        }
         });
     }, 3000);
     }
@@ -429,8 +439,11 @@ socket.on('updateTime', (time) => {
 });
 
 socket.on('nextRound', (player, players, newGame) => {
+    
     if (frontEndPlayers[socket.id]){
+        frontEndPlayers[player].cellsClicked = [];
     position = 0;
+
     clearTimeout(frontEndPlayers[player].listener)
     Object.assign(frontEndPlayers, players);
     
@@ -517,14 +530,20 @@ socket.on('finished', (player, id) => {
     }
 });
 
+/*
 socket.on('cellClicked', (num, player) => {
+    //if(player !== socket.id) return;
+
     const cell = document.querySelector(`.newCell[style*="grid-area: ${num}"][data-id="${player}"]`);
     const pData = frontEndPlayers[player];
+    console.log(pData.correctData[pData.level-1])
     if (!cell || !pData || pData.cellsClicked.includes(num)) return;
 
     pData.cellsClicked.push(num);
     const correctIndex = pData.correctData[pData.level-1].indexOf(num);
+    
     if (correctIndex > -1) {
+        
         cell.style.backgroundColor = '#0f0';
         pData.correctData[pData.level-1].splice(correctIndex, 1);
         pData.score += 10;
@@ -540,6 +559,22 @@ socket.on('cellClicked', (num, player) => {
         if (pData.chances <= 0) pData.lives--;
     }
     if (player === socket.id) socket.emit('updateScore', pData, player);
+});
+*/
+socket.on('updateScore', (pData, playerId) => {
+    socket.emit('updateScore', pData, playerId)
+});
+socket.on('wonRound', (pData, playerId) => {
+    socket.emit('wonRound', pData, playerId)
+});
+
+socket.on('cellUpdate', ({ playerId, num, isCorrect }) => {
+    const cell = document.querySelector(`.newCell[style*="grid-area: ${num}"][data-id="${playerId}"]`);
+    frontEndPlayers[playerId].cellsClicked.push(num);
+    if (cell) {
+        // Set the background color based on the result from the server
+        cell.style.backgroundColor = isCorrect ? '#0f0' : '#f00';
+    }
 });
 
 socket.on('error', (message) => {
