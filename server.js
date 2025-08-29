@@ -533,6 +533,7 @@ function startGameTimer(time, roomId) {
     const currentLobby = lobbyData[mode][roomId];
     currentLobby.roundTimer = setInterval(() => {
         currentLobby.timer = (currentLobby.timer + 0.01);
+        
         io.to(roomId).emit('updateTime', currentLobby.timer);
     }, 10);
 }

@@ -626,6 +626,7 @@ socket.on('finished', (player, id) => {
     if(frontEndPlayers[id]){
         frontEndPlayers[id].level = player.level;
         frontEndPlayers[id].finished = player.finished;
+        frontEndPlayers[id].timeFinished = player.timeFinished.toFixed(2);
         
     } 
     
@@ -638,7 +639,8 @@ socket.on('finished', (player, id) => {
     const p1 = document.createElement('p');
     const p2 = document.createElement('p');
     const p3 = document.createElement('p');
-    p3.className = 'timer';
+    
+    p3.textContent = 'Time Finished: ' +  frontEndPlayers[id].timeFinished;
     if (socket.id === id) {
         
         p0.textContent = frontEndPlayers[id].username + " (YOU)";
