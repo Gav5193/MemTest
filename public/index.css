@@ -135,7 +135,7 @@ body {
 }
 
 .grid-container {
-    background-color: var(--color-primary);
+    background-color: var(--color-secondary);
     border: var(--border-retro);
     flex: 1 1 0;
     height: 95%;
@@ -153,7 +153,7 @@ body {
 
 
 .grid-container.is-you {
-    border-color: var(--color-secondary);
+    border-color: var(--color-primary);
 }
 
 .text-container {
