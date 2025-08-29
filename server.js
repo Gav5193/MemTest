@@ -272,6 +272,8 @@ io.on('connection', (socket) => {
         }
 
         if (allReady) {
+            io.to(roomId).emit('updateUsername', lobbyPlayers);
+            setTimeout (() => {
             lobbyData[mode][roomId].inProgress = true;
             generateCorrect(mode, roomId)
             console.log(lobbyData[mode][roomId].correctData)
@@ -281,6 +283,7 @@ io.on('connection', (socket) => {
                 lobbyPlayers[p].correctData = lobbyData[mode][roomId].correctData
                 loadRound(p, true, roomId);
             }
+         }, 2000);
            
             
             

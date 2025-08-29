@@ -269,7 +269,7 @@ function generateCorrect(id) {
     let level = frontEndPlayers[id].level 
     frontEndPlayers[id].correctData[level-1].forEach(index => {
         const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
-        if (cell) cell.style.backgroundColor = '#ff964f';
+        if (cell) cell.style.backgroundColor = '#ede8d0';
     });
 
     frontEndPlayers[id].listener = setTimeout(() => {
@@ -279,7 +279,7 @@ function generateCorrect(id) {
             const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
             if (cell ) {
                 cell.style.transition = 'background-color 0.5s ease';
-                cell.style.backgroundColor = '#444';
+                cell.style.backgroundColor = '#222222';
             }
         }
         });
