@@ -31,7 +31,7 @@ function container() {
     const loginContainer = document.createElement('div');
     loginContainer.className = 'login-container';
     const title = document.createElement('h1');
-    title.textContent = 'MemTest';
+    title.textContent = 'BETA';
     loginContainer.append(title);
     screen.appendChild(loginContainer);
 }
@@ -97,7 +97,7 @@ function multiLobby(mode, isInProgress) {
     lobbyContainer.className = 'login-container';
 
     const title = document.createElement('h1');
-    title.textContent = `Lobby - ${mode.charAt(0).toUpperCase() + mode.slice(1)} Mode`;
+    title.textContent = `BETA - ${mode.charAt(0).toUpperCase() + mode.slice(1)} Mode`;
     const lobbyLink = document.createElement('input');
     lobbyLink.type = 'text';
     lobbyLink.value = window.location.href;
