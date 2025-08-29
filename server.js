@@ -58,7 +58,8 @@ app.get('/multiplayer/create/:mode', (req, res) => {
         fastestTime: 10000,
         fastestTimeID: null,
         highestLevel: 0,
-        highestLevelID: null
+        highestLevelID: null,
+        roundHighestLevel: 0
 
     };
     players[roomId] = {};
@@ -141,8 +142,9 @@ io.on('connection', (socket) => {
         socket.mode = roomMode;
         const lobby = lobbyData[roomMode][roomId]
         if (!lobbyData[roomMode][roomId].inProgress){
-            if (players[roomId][lobbyData[roomMode][roomId].winner]){
-            players[roomId][lobbyData[roomMode][roomId].winner].gamesWon++;
+            if (lobby.winner && lobby.winner === socket.id){
+
+                players[roomId][lobby.winner].gamesWon++;
             }
             clearInterval(lobbyData[roomMode][roomId].roundTimer)
             var target = null;
@@ -165,13 +167,13 @@ io.on('connection', (socket) => {
           
                 lobby.inProgress= false,
                 lobby.level= 0,
-                lobby.gridRow= 4,
-                lobby.winner= null,
-                lobby.remainingTime= 10,
-                lobby.roundTimer= null,
-                lobby.correctData= [],
-            
-                lobby.targetLevel= target,
+                lobby.gridRow= 4
+                lobby.winner= null
+                lobby.remainingTime= 10
+                lobby.roundTimer= null
+                lobby.correctData= []
+                lobby.roundHighestLevel = 0
+                lobby.targetLevel= target
                 lobby.timer= 0
             
             if (!players[roomId][socket.id]){
@@ -317,6 +319,10 @@ io.on('connection', (socket) => {
         let allFinished = true;
         if (lobbyPlayers && lobbyPlayers[player]) {
             if (lobbyPlayers[player].level === currentLobby.targetLevel) {
+                if (currentLobby.roundHighestLevel < lobbyPlayers[player].level){
+                    currentLobby.roundHighestLevel = lobbyPlayers[player].level
+                    currentLobby.winner = player;
+                }
                     if (currentLobby.highestLevel < lobbyPlayers[player].level){
                         currentLobby.fastestTimeID = players[roomId][player].username;
                         currentLobby.fastestTime = currentLobby.timer;
@@ -384,8 +390,12 @@ io.on('connection', (socket) => {
             lobbyPlayers[socket.id].chances = playerData.chances;
             if (lobbyPlayers[socket.id].lives <= 0){
                 lobbyPlayers[socket.id].timeFinished = currentLobby.timer;
-              if (currentLobby.highestLevel < lobbyPlayers[player].level){
+                if (currentLobby.roundHighestLevel < lobbyPlayers[player].level){
+                    currentLobby.roundHighestLevel = lobbyPlayers[player].level
                     currentLobby.winner = player;
+                }
+              if (currentLobby.highestLevel < lobbyPlayers[player].level){
+                   
                     currentLobby.highestLevel = lobbyPlayers[player].level
                     currentLobby.highestLevelID = lobbyPlayers[player].username
                     currentLobby.fastestTime = lobbyPlayers[player].timeFinished
