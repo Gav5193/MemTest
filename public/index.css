@@ -32,7 +32,7 @@ body {
 }
 
 /* --- Login Screen --- */
-#login-container {
+.login-container {
     background-color: var(--color-primary);
     padding: 2rem;
     border: var(--border-retro);
@@ -42,15 +42,16 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    margin: 20px;
 }
 
-#login-container h1 {
+.login-container h1 {
     font-size: 2.5rem;
     color: var(--color-secondary);
     text-shadow: 4px 4px 0px #000;
 }
 
-#login-container p#greeting {
+.login-container p#greeting {
     min-height: 1em;
     color: var(--color-highlight);
 }
@@ -60,7 +61,7 @@ body {
     display: none; /* Hide label for a cleaner look */
 }
 
-#login-container input[type="text"] {
+.login-container input[type="text"] {
     background-color: var(--color-background);
     color: var(--color-text);
     border: var(--border-retro);
@@ -71,7 +72,7 @@ body {
     box-sizing: border-box;
 }
 
-#login-container button {
+.login-container button {
     font-family: var(--font-retro);
     background-color: var(--color-secondary);
     color: var(--color-text);
@@ -81,33 +82,33 @@ body {
     width: 100%;
 }
 
-#login-container button:hover {
+.login-container button:hover {
     background-color: var(--color-highlight);
     color: #000;
 }
 
-#playersList-container {
+.playerslist-container {
     border-top: var(--border-retro);
     padding-top: 1.5rem;
 }
 
-#playersList {
+.playerslist {
     list-style-type: none;
     padding: 0;
     margin: 0;
 }
 
-#playersList li {
+.playerslist li {
     display: flex;
     justify-content: space-between;
     padding: 0.5rem;
 }
 
-#playersList li.you {
+.playerslist li.you {
     color: var(--color-highlight);
 }
 
-#playersList li .status-ready {
+.playerslist li .status-ready {
     color: #39ff14; /* Neon green */
 }
 

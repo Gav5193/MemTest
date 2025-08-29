@@ -1,3 +1,5 @@
+
+
 const socket = io({ autoConnect: false });
 
 const screen = document.querySelector('#screen');
@@ -27,7 +29,7 @@ function container() {
     screen.style.alignItems = 'center';
     screen.style.justifyContent = 'center';
     const loginContainer = document.createElement('div');
-    loginContainer.id = 'login-container';
+    loginContainer.className = 'login-container';
     const title = document.createElement('h1');
     title.textContent = 'MemTest';
     loginContainer.append(title);
@@ -35,7 +37,7 @@ function container() {
 }
 
 function getUsername() {
-    const loginContainer = document.querySelector("#login-container");
+    const loginContainer = document.querySelector(".login-container");
     const greetingOutput = document.createElement('p');
     const formGroup = document.createElement('div');
     formGroup.className = 'username-group';
@@ -68,7 +70,7 @@ function getUsername() {
 function home() {
     container();
     getUsername();
-    const loginContainer = document.querySelector("#login-container");
+    const loginContainer = document.querySelector(".login-container");
     
     const multiButton = document.createElement('button');
    
@@ -92,7 +94,7 @@ function multiLobby(mode, isInProgress) {
     screen.style.justifyContent = 'center';
 
     const lobbyContainer = document.createElement('div');
-    lobbyContainer.id = 'login-container';
+    lobbyContainer.className = 'login-container';
 
     const title = document.createElement('h1');
     title.textContent = `Lobby - ${mode.charAt(0).toUpperCase() + mode.slice(1)} Mode`;
@@ -153,11 +155,12 @@ function multiLobby(mode, isInProgress) {
 
     
     const listContainer = document.createElement('div');
-    listContainer.id = 'playersList-container';
+    listContainer.className = 'playerslist-container';
     const listTitle = document.createElement('h2');
     listTitle.textContent = 'Players in Lobby';
     const list = document.createElement('ul');
-    list.id = 'playersList';
+    list.className = 'playerslist';
+    list.id = 'players';
 
     let readyButton = document.createElement('button');
     readyButton.id = 'readyButton';
@@ -168,7 +171,13 @@ function multiLobby(mode, isInProgress) {
     lobbyContainer.append(title, lobbyLink, usernameGroup, setUsernameButton, homeButton,  listContainer, readyButton);
     screen.appendChild(lobbyContainer);
 
-    readyButton.textContent = 'Ready Up';
+    if (isInProgress){
+        readyButton.textContent = 'Game is in Progress'
+    }
+    else{
+        readyButton.textContent = 'Ready Up';
+    }
+    
     readyButton.classList.add('not-ready');
     
     readyButton.addEventListener('click', () => {
@@ -317,15 +326,40 @@ socket.on('disconnected', (backEndPlayers, id, inProgress) => {
     if (container) {
         container.innerHTML = '<h2>Player Disconnected</h2>';
     } else {
-        const list = document.querySelector('#playersList');
+        const list = document.querySelector('#players');
         const itemToRemove = list?.querySelector(`li[data-id="${id}"]`);
         if (itemToRemove) list.removeChild(itemToRemove);
     }
 });
-
-socket.on('updateLobby', (backEndPlayers) => {
+socket.on('updateUsername', (backEndPlayers) =>{
+    
     Object.assign(frontEndPlayers, backEndPlayers);
-    const list = document.querySelector('#playersList');
+    const list = document.querySelector('#players');
+    if (!list) return;
+
+    console.log('yay');
+    list.innerHTML = '';
+    for (const key in frontEndPlayers) {
+        const player = frontEndPlayers[key];
+        const listItem = document.createElement('li');
+        listItem.dataset.id = key;
+        if (key === socket.id) listItem.classList.add('you');
+
+        const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
+        const statusText = player.ready ? 'Ready' : 'Not Ready';
+        const spectatorText = player.isSpectator ? ' (Spectating)' : '';
+        
+        listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}${spectatorText}</span> <span class="${statusClass}">${statusText}</span>`;
+        list.appendChild(listItem);
+    }
+});
+socket.on('updateLobby', (backEndPlayers, records, fastestTime, fastestTimeID, highestLevel, highestLevelID, mode) => {
+
+
+    screen.style.flexDirection = 'row';
+    
+    Object.assign(frontEndPlayers, backEndPlayers);
+    const list = document.querySelector('#players');
     if (!list) return;
 
     list.innerHTML = '';
@@ -343,20 +377,63 @@ socket.on('updateLobby', (backEndPlayers) => {
         list.appendChild(listItem);
     }
 
+    const oldContainer = document.querySelector(".leaderboard-container");
+    if (oldContainer){
+        oldContainer.remove();
+    }
+    const container = document.createElement('div');
+    container.className = "leaderboard-container";
+
+    container.innerHTML = "<h1> All Time Leaderboard </h1>";
+    container.style.fontSize = '12px';
+    const playerList = document.createElement('ol');
+    records.forEach((player, index) => {
+        const medal = ['🥇 1ST', '🥈 2ND', '🥉 3RD'][index] || `${index + 1}TH`
+        playerList.innerHTML += `<li>${medal} ${player.username} Lvl: ${player.level} - Time: ${player.time}</li>`;
+    });
+
+    const title = document.createElement('h1');
+    title.textContent = 'Lobby Stats';
+    
+    const lobbyList = document.createElement('div')
+    lobbyList.className = 'playerslist';
+    for (const key in frontEndPlayers) {
+        const player = frontEndPlayers[key];
+        const listItem = document.createElement('li');
+        listItem.dataset.id = key;
+        if (key === socket.id) listItem.classList.add('you');
+
+        const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
+        const wins = player.gamesWon;
+        listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span class="${statusClass}">${wins} wins</span>`;
+
+        lobbyList.appendChild(listItem);
+    }
+    const record = document.createElement('h2');
+    if (fastestTime.toFixed(0)!== '10000'){
+    record.textContent = `Best Score: ${highestLevelID} Lvl: ${highestLevel} - Time: ${fastestTime.toFixed(1)} `;
+    }
+    container.append(playerList, title, lobbyList, record, record);
+    
+    screen.append(container);
+
+
     
 });
 
 socket.on('updateTime', (time) => {
      timeElapsed = time;
     document.querySelectorAll('.timer').forEach(t => {
-        t.textContent = `Time elapsed: ${(time / 10).toFixed(1)}`;
+        t.textContent = `Time elapsed: ${(time).toFixed(1)}`;
     });
 });
 
 socket.on('nextRound', (player, players, newGame) => {
+    if (frontEndPlayers[socket.id]){
     position = 0;
     clearTimeout(frontEndPlayers[player].listener)
     Object.assign(frontEndPlayers, players);
+    
     if(newGame){
     renderGameScreen(player, newGame);
     }
@@ -373,6 +450,7 @@ socket.on('nextRound', (player, players, newGame) => {
             createGrid(frontEndPlayers[player].gridRow,player);
         }
     }
+}
 });
 
 
@@ -390,7 +468,8 @@ socket.on('gameOver', (backEndPlayers,mode) => {
     const playerList = document.createElement('ol');
     playersArray.forEach((player, index) => {
         const medal = ['🥇 1ST', '🥈 2ND', '🥉 3RD'][index] || `${index + 1}TH`;
-        playerList.innerHTML += `<li>${medal} ${player.username} Lvl: ${player.level} - Time: ${player.timeFinished}</li>`;
+        playerList.innerHTML += `<li>${medal} ${player.username} Lvl: ${player.level} - Time: ${player.timeFinished.toFixed(1)}</li>`;
+
 
     });
     const homeButton = document.createElement('button');

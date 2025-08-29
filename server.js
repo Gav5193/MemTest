@@ -14,7 +14,9 @@ const port = 3000;
 const lobbyData = {
     "endless": {},
     "ten": {},
-    "twenty": {}
+    "twenty": {},
+    'fifteen': {},
+    'five': {}
 };
 
 // Players are now stored by roomId
@@ -51,7 +53,13 @@ app.get('/multiplayer/create/:mode', (req, res) => {
         timer: 0,
         roundTimer: null,
         correctData: [],
-        mode: mode
+        mode: mode,
+        targetLevel: 0, 
+        fastestTime: 10000,
+        fastestTimeID: null,
+        highestLevel: 0,
+        highestLevelID: null
+
     };
     players[roomId] = {};
     console.log(`New room created: ${roomId} for mode ${mode}`);
@@ -93,6 +101,7 @@ function generateCorrect(mode, roomId) {
     for(let j = 0; j < currentLobby.targetLevel; j++){
         currentLobby.level++;
         currentLobby.gridRow = 4 + Math.ceil(currentLobby.level / 3);
+        if(currentLobby.gridRow>9) currentLobby.gridRow = 9;
         let i = 0;
         currentLobby.correctData.push([]);
         while (i < currentLobby.level + 2) {
@@ -113,10 +122,7 @@ server.listen(port, () => {
 io.on('connection', (socket) => {
 
     socket.on('joinLobby', async (roomId, username) => {
-        await db.insertUsername(username);
-
-        const name = await db.getAllUsernames();
-        console.log("Usernames: ", name)
+        
         let roomMode = null;
         for (const mode in lobbyData) {
             if (lobbyData[mode][roomId]) {
@@ -133,8 +139,11 @@ io.on('connection', (socket) => {
         socket.join(roomId);
         socket.roomId = roomId;
         socket.mode = roomMode;
-        
+        const lobby = lobbyData[roomMode][roomId]
         if (!lobbyData[roomMode][roomId].inProgress){
+            if (players[roomId][lobbyData[roomMode][roomId].winner]){
+            players[roomId][lobbyData[roomMode][roomId].winner].gamesWon++;
+            }
             clearInterval(lobbyData[roomMode][roomId].roundTimer)
             var target = null;
             if (roomMode === 'ten'){
@@ -142,40 +151,67 @@ io.on('connection', (socket) => {
             }else if(roomMode === 'twenty'){
                 target = 20;
             }
-            else{
-                target = 100;
+            else if (roomMode === 'five'){
+                target = 5;
             }
-            lobbyData[roomMode][roomId] = {
-                inProgress: false,
-                level: 0,
-                gridRow: 4,
-                winner: null,
-                remainingTime: 10,
-                roundTimer: null,
-                correctData: [],
-                mode: roomMode,
-                targetLevel: target,
-                timer: 0
-            };
-        players[roomId][socket.id] = {
-            level: 1,
-            score: 0,
-            cellsClicked: [],
-            lives: 3,
-            gridRow: 4,
-            chances: 3,
-            username: username || 'Guest',
-            ready: false,
-            finished: false,
-            mode: roomMode,
-            timeFinished: undefined
-        };
+            else if (roomMode === 'fifteen'){
+                target = 15;
+            }
+            else{
+                target = 50 ;
+
+            }
+            
+          
+                lobby.inProgress= false,
+                lobby.level= 0,
+                lobby.gridRow= 4,
+                lobby.winner= null,
+                lobby.remainingTime= 10,
+                lobby.roundTimer= null,
+                lobby.correctData= [],
+            
+                lobby.targetLevel= target,
+                lobby.timer= 0
+            
+            if (!players[roomId][socket.id]){
+                players[roomId][socket.id] = {
+                level: 1,
+                    score: 0,
+                    cellsClicked: [],
+                    correctData: [],
+                    lives: 3,
+                    gridRow: 4,
+                    chances: 3,
+                    username: username || 'Guest',
+                    ready: false,
+                    finished: false,
+                    mode: roomMode,
+                    timeFinished: undefined,
+                    gamesWon: 0
+                };
+            }
+            else{
+                const player = players[roomId][socket.id];
+                player.level = 1;
+                player.score = 0;
+                player.cellsClicked = [];
+                player.correctData = [];
+                player.lives = 3;
+                player.chances = 3;
+                player.gridRow = 4;
+                player.ready = false;
+                player.finished = false;
+                player.timeFinished = 0;
+
+            }
         
         // If the game is in progress, the new player is a spectator.
-       
+    } 
+        const records = await db.getRecord(socket.mode);
+        io.to(roomId).emit('updateLobby', players[roomId], records, lobby.fastestTime, lobby.fastestTimeID, lobby.highestLevel, lobby.highestLevelID, socket.mode);
         
-        io.to(roomId).emit('updateLobby', players[roomId]);
-    }
+    
         
     });
 
@@ -183,7 +219,7 @@ io.on('connection', (socket) => {
         const { roomId } = socket;
         if (roomId && players[roomId] && players[roomId][socket.id]) {
             players[roomId][socket.id].username = player.username;
-            io.to(roomId).emit('updateLobby', players[roomId]);
+            io.to(roomId).emit('updateUsername', players[roomId]);
         }
     });
 
@@ -257,7 +293,7 @@ io.on('connection', (socket) => {
             
             
         } else {
-            io.to(roomId).emit('updateLobby', lobbyPlayers);
+            io.to(roomId).emit('updateUsername', lobbyPlayers);
         }
     });
 
@@ -269,7 +305,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('wonRound', (frontEndPlayers, player) => {
+    socket.on('wonRound', async (frontEndPlayers, player) => {
         const { roomId, mode } = socket;
         if (!roomId || !mode || !lobbyData[mode][roomId]) return;
 
@@ -280,10 +316,18 @@ io.on('connection', (socket) => {
         const currentLobby = lobbyData[mode][roomId];
         let allFinished = true;
         if (lobbyPlayers && lobbyPlayers[player]) {
-            if (lobbyPlayers[player].level == currentLobby.targetLevel) {
-                currentLobby.winner = player;
+            if (lobbyPlayers[player].level === currentLobby.targetLevel) {
+                    if (currentLobby.highestLevel < lobbyPlayers[player].level){
+                        currentLobby.fastestTimeID = players[roomId][player].username;
+                        currentLobby.fastestTime = currentLobby.timer;
+                        currentLobby.highestLevel = lobbyPlayers[player].level;
+                        currentLobby.highestLevelID = lobbyPlayers[player].username;
+                    }
+                 
+                
                 lobbyPlayers[player].finished = true;
                 lobbyPlayers[player].timeFinished = currentLobby.timer;
+            }
             }
             
             for (const id in lobbyPlayers) {
@@ -292,21 +336,30 @@ io.on('connection', (socket) => {
                     break;
                 }
             }
-        }
+        
         if (allFinished){
             currentLobby.inProgress = false;
+            for(const p in lobbyPlayers){
+                
+                await db.addTime(mode, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished);
+
+            }
+
+           
             io.to(roomId).emit('gameOver', lobbyPlayers, mode)
+            
             return;
         }
         if (lobbyPlayers[player].finished === true){
             io.to(roomId).emit('finished', lobbyPlayers[player], player);
             
               if (mode !== 'endless'){
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         for(const p in lobbyPlayers){
                             if(lobbyPlayers[p].finished === false){
                                 lobbyPlayers[p].timeFinished = currentLobby.timer;
                             }
+                            await db.addTime(mode, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished)
                         }
                         currentLobby.inProgress = false;
                         io.to(roomId).emit('gameOver', lobbyPlayers, mode);
@@ -318,7 +371,7 @@ io.on('connection', (socket) => {
         loadRound(player, false, roomId)
     });
 
-    socket.on('updateScore', (playerData, player) => {
+    socket.on('updateScore', async (playerData, player) => {
         const { roomId, mode } = socket;
         if (!roomId || !mode || !lobbyData[mode][roomId]) return;
         
@@ -329,6 +382,16 @@ io.on('connection', (socket) => {
             lobbyPlayers[socket.id].lives = playerData.lives;
             lobbyPlayers[socket.id].score = playerData.score;
             lobbyPlayers[socket.id].chances = playerData.chances;
+            if (lobbyPlayers[socket.id].lives <= 0){
+                lobbyPlayers[socket.id].timeFinished = currentLobby.timer;
+              if (currentLobby.highestLevel < lobbyPlayers[player].level){
+                    currentLobby.winner = player;
+                    currentLobby.highestLevel = lobbyPlayers[player].level
+                    currentLobby.highestLevelID = lobbyPlayers[player].username
+                    currentLobby.fastestTime = lobbyPlayers[player].timeFinished
+                    currentLobby.fastestTimeID = lobbyPlayers[player].username
+                }
+            }
 
             let allDeadInGame = true;
             
@@ -341,9 +404,15 @@ io.on('connection', (socket) => {
                 for (const p in lobbyPlayers) {
                     lobbyPlayers[p].ready = false
                     lobbyPlayers[p].timeFinished = currentLobby.timer
+                    await db.addTime(mode, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished)
+
+
                 }
                 clearInterval(currentLobby.roundTimer);
                 currentLobby.inProgress = false;
+                
+              
+                
                 io.to(roomId).emit('gameOver', lobbyPlayers, mode);
                 return;
             }
@@ -352,7 +421,7 @@ io.on('connection', (socket) => {
 
             if (lobbyPlayers[player].chances <= 0) {
                 loadRound(player, false, roomId);
-                io.to(roomId).emit('lostGame', lobbyPlayers, player);
+               
               
             }
             
@@ -370,7 +439,7 @@ function loadRound(player, isNewGame, roomId) {
     const currentLobby = lobbyData[mode][roomId];
     if (!currentLobby || !currentLobby.inProgress) return;
 
-    currentLobby.winner = null;
+    
     const lobbyPlayers = players[roomId];
 
     let allDead = true;
@@ -416,7 +485,7 @@ function startGameTimer(time, roomId) {
 
     const currentLobby = lobbyData[mode][roomId];
     currentLobby.roundTimer = setInterval(() => {
-        currentLobby.timer++;
+        currentLobby.timer = (currentLobby.timer + 0.1);
         io.to(roomId).emit('updateTime', currentLobby.timer);
     }, 100);
 }
