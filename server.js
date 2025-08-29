@@ -273,14 +273,16 @@ io.on('connection', (socket) => {
 
         if (allReady) {
             io.to(roomId).emit('updateUsername', lobbyPlayers);
+            lobbyData[mode][roomId].inProgress = true; 
             setTimeout (() => {
-            lobbyData[mode][roomId].inProgress = true;
+            
             generateCorrect(mode, roomId)
             console.log(lobbyData[mode][roomId].correctData)
             startGameTimer(0, roomId);
             for (const p in lobbyPlayers) {
                 //lobbyPlayers[p].isSpectator = false;
-                lobbyPlayers[p].correctData = lobbyData[mode][roomId].correctData
+                    lobbyPlayers[p].correctData = JSON.parse(JSON.stringify(lobbyData[mode][roomId].correctData));
+
                 loadRound(p, true, roomId);
             }
          }, 2000);
@@ -376,6 +378,7 @@ socket.on('cellClicked', (num) => {
                 for(const p in lobbyPlayers){
                     await db.addTime(mode, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished);
                 }
+                clearInterval(currentLobby.roundTimer)
                 io.to(roomId).emit('gameOver', lobbyPlayers, mode)
                 
                 return;
@@ -453,6 +456,7 @@ socket.on('cellClicked', (num) => {
                 
          
                 
+                clearInterval(currentLobby.roundTimer)
                 io.to(roomId).emit('gameOver', lobbyPlayers, mode);
                 return;
             }

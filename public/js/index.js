@@ -282,6 +282,7 @@ function generateCorrect(id) {
     });
 
     frontEndPlayers[id].listener = setTimeout(() => {
+        
         const pData = frontEndPlayers[id];
         pData.correctData[level-1].forEach(index => {
             if (!pData.cellsClicked.includes(index)) {
@@ -565,7 +566,7 @@ socket.on('updateTime', (time) => {
 socket.on('nextRound', (player, players, newGame) => {
     
     if (frontEndPlayers[socket.id]){
-        frontEndPlayers[player].cellsClicked = [];
+        
     position = 0;
 
     clearTimeout(frontEndPlayers[player].listener)
