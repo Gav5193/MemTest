@@ -50,7 +50,16 @@ function getUsername() {
     usernameInput.type = 'text';
     usernameInput.id = 'usernameInput';
     usernameInput.placeholder = 'e.g., PlayerOne';
-    greetingOutput.textContent = 'Please enter a username to begin.';
+    
+    
+    if (sessionStorage.getItem('username') != null){
+        yourUsername = sessionStorage.getItem('username');
+        greetingOutput.textContent = `Welcome back: ${yourUsername}!`;
+    }
+    else{
+        greetingOutput.textContent = 'Please enter a username to begin.';
+    }
+    
     submitButton.textContent = 'Set Username';
     submitButton.id = 'submit-button';
 
