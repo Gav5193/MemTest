@@ -97,7 +97,19 @@ function multiLobby(mode, isInProgress) {
     lobbyContainer.className = 'login-container';
 
     const title = document.createElement('h1');
-    title.textContent = `BETA - ${mode.charAt(0).toUpperCase() + mode.slice(1)} Mode`;
+    title.style.marginBottom = '0px'
+    const modeText = document.createElement('h1')
+    title.textContent = 'BETA'
+    modeText.style.marginTop = '0px'
+    modeText.style.marginBottom = '0px'
+    modeText.style.fontSize = '1.2vw'
+    if (mode !== 'endless'){
+        modeText.textContent = `First to ${mode.charAt(0).toUpperCase() + mode.slice(1)}`;
+    }
+    else{
+        modeText.textContent = `${mode.charAt(0).toUpperCase() + mode.slice(1)} Mode`;
+    }
+    
     const lobbyLink = document.createElement('input');
     lobbyLink.type = 'text';
     lobbyLink.value = window.location.href;
@@ -158,6 +170,7 @@ function multiLobby(mode, isInProgress) {
     listContainer.className = 'playerslist-container';
     const listTitle = document.createElement('h2');
     listTitle.textContent = 'Players in Lobby';
+    listTitle.style.fontSize = '1vw'
     const list = document.createElement('ul');
     list.className = 'playerslist';
     list.id = 'players';
@@ -168,7 +181,8 @@ function multiLobby(mode, isInProgress) {
    
 
     listContainer.append(listTitle, list);
-    lobbyContainer.append(title, lobbyLink, usernameGroup, setUsernameButton, homeButton,  listContainer, readyButton);
+    lobbyContainer.append(title, modeText, lobbyLink, usernameGroup, setUsernameButton, homeButton,  listContainer, readyButton);
+
     screen.appendChild(lobbyContainer);
 
     if (isInProgress){
@@ -231,10 +245,10 @@ function createGrid(x, id) {
     const grid = document.querySelector(`.grid[data-id="${id}"]`);
     grid.innerHTML = ''
     const activePlayerCount = Object.values(frontEndPlayers).length
-    const size = Math.min(gridContainer.clientHeight * 0.9, (screen.clientWidth / (activePlayerCount <= 3 ? activePlayerCount : Math.ceil(activePlayerCount / 2)) * 0.6));
+    const size = Math.min(gridContainer.clientHeight * 0.9, (screen.clientWidth / (activePlayerCount < 3 ? activePlayerCount : Math.ceil(activePlayerCount / 2)) * 0.5));
     grid.style.width = size + 'px';
     
-    if (frontEndPlayers[id].lives > 0){
+  
     for (let i = 0; i < x; i++) {
         for (let j = 0; j < x; j++) {
             const cell = document.createElement('div');
@@ -245,13 +259,8 @@ function createGrid(x, id) {
             cell.dataset.id = id;
             grid.appendChild(cell);
         }
-    }}
-    else{
-        
-        const container = document.querySelector(`.grid[data-id="${id}"]`);
-        container.innerHTML = 'UTRASH!';
-        Object.assign(container.style, { fontSize: '3vw', color: 'red', display: 'flex', alignItems: 'center', justifyContent: 'center' });
-        }
+    }
+ 
 }
 
 function generateCorrect(id) {
@@ -260,7 +269,7 @@ function generateCorrect(id) {
     let level = frontEndPlayers[id].level 
     frontEndPlayers[id].correctData[level-1].forEach(index => {
         const cell = document.querySelector(`.newCell[style*="grid-area: ${index}"][data-id="${id}"]`);
-        if (cell) cell.style.backgroundColor = '#ff0';
+        if (cell) cell.style.backgroundColor = '#ff964f';
     });
 
     frontEndPlayers[id].listener = setTimeout(() => {
@@ -287,15 +296,21 @@ function renderGameScreen(player, isNewGame) { // Player refers to playerID
     const playerCount = playerIds.length;
     
      console.log(playerCount)
-        if (playerCount > 3) {
+        if (playerCount > 2) {
+    
+            const screenContainer = document.createElement('div')
+            screenContainer.flexDirection = 'column';
+            screenContainer.style.width = '85%';
+            screenContainer.style.height = '100%'
             screen.style.flexDirection = 'column'; 
         screen.className = 'game-screen-two-rows';
         const topRow = document.createElement('div');
         topRow.className = 'game-row';
         const bottomRow = document.createElement('div');
         bottomRow.className = 'game-row';
-        screen.appendChild(topRow);
-        screen.appendChild(bottomRow);
+        screenContainer.append(topRow);
+        screenContainer.append(bottomRow);
+        screen.appendChild(screenContainer);
         const splitIndex = Math.ceil(playerCount / 2);
         playerIds.forEach((id, index) => {
             const parentRow = index < splitIndex ? topRow : bottomRow;
@@ -303,11 +318,50 @@ function renderGameScreen(player, isNewGame) { // Player refers to playerID
         });
     } else {
         screen.className = 'game-screen-single-row';
-        screen.style.flexDirection = 'row'; 
+        
         playerIds.forEach((id) => {
             renderPlayerGrid(id, screen, frontEndPlayers[id].gridRow);
         });
     }
+
+    screen.style.flexDirection = 'row';
+    const chatContainer = document.createElement('div');
+    chatContainer.className = 'chatContainer';
+    
+    
+    chatContainer.style.height = '95%';
+    chatContainer.style.width = '18%';
+
+    const chatTitle = document.createElement('h1')
+    chatTitle.textContent = 'Chat';
+
+    messageBox = document.createElement('div')
+    messageBox.id = 'messages';
+
+    inputArea = document.createElement('div')
+    input = document.createElement('input')
+    input.type = 'text'
+    input.placeholder= 'type your message'
+    inputArea.append(input);
+     
+   input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && input.value !== ''){
+            const newMessageText = yourUsername + ": " + input.value.trim();
+            
+
+            const newMessageDiv = document.createElement('div');
+            newMessageDiv.style.borderBottom = '1px'
+            newMessageDiv.textContent = newMessageText;
+            messageBox.appendChild(newMessageDiv)
+            messageBox.scrollTop = messageBox.scrollHeight
+            
+            socket.emit('updateMessages', newMessageText);
+            input.value = '';
+        }
+    });
+    chatContainer.append(chatTitle, messageBox, inputArea)
+ 
+    screen.append(chatContainer)
     generateCorrect(socket.id);
     attach();
 }
@@ -319,7 +373,7 @@ function renderPlayerGrid(id, parentElement, gridRow) {
     if (frontEndPlayers[id].lives <= 0) {
         const container = document.querySelector(`.grid[data-id="${id}"]`);
         container.innerHTML = 'UTRASH!';
-        Object.assign(container.style, { fontSize: '3vw', color: 'red', display: 'flex', alignItems: 'center', justifyContent: 'center' });
+        Object.assign(container.style, { fontSize: '3vw', color: '#e94560', display: 'flex', alignItems: 'center', justifyContent: 'center' });
     }
 }
 
@@ -341,6 +395,8 @@ socket.on('disconnected', (backEndPlayers, id, inProgress) => {
         if (itemToRemove) list.removeChild(itemToRemove);
     }
 });
+
+
 socket.on('updateUsername', (backEndPlayers) =>{
     
     Object.assign(frontEndPlayers, backEndPlayers);
@@ -352,13 +408,14 @@ socket.on('updateUsername', (backEndPlayers) =>{
     for (const key in frontEndPlayers) {
         const player = frontEndPlayers[key];
         const listItem = document.createElement('li');
+        listItem.style.fontSize = ' 0.8vw'
         listItem.dataset.id = key;
         if (key === socket.id) listItem.classList.add('you');
 
         const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
         const statusText = player.ready ? 'Ready' : 'Not Ready';
         const spectatorText = player.isSpectator ? ' (Spectating)' : '';
-        
+
         listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}${spectatorText}</span> <span class="${statusClass}">${statusText}</span>`;
         list.appendChild(listItem);
     }
@@ -376,6 +433,7 @@ socket.on('updateLobby', (backEndPlayers, records, fastestTime, fastestTimeID, h
     for (const key in frontEndPlayers) {
         const player = frontEndPlayers[key];
         const listItem = document.createElement('li');
+        listItem.style.fontSize = ' 0.8vw'
         listItem.dataset.id = key;
         if (key === socket.id) listItem.classList.add('you');
 
@@ -395,46 +453,103 @@ socket.on('updateLobby', (backEndPlayers, records, fastestTime, fastestTimeID, h
     container.className = "leaderboard-container";
 
     container.innerHTML = "<h1> All Time Leaderboard </h1>";
-    container.style.fontSize = '12px';
+    container.style.fontSize = '0.5vw';
     const playerList = document.createElement('ol');
+
+
     records.forEach((player, index) => {
         const medal = ['🥇 1ST', '🥈 2ND', '🥉 3RD'][index] || `${index + 1}TH`
-        playerList.innerHTML += `<li>${medal} ${player.username} Lvl: ${player.level} - Time: ${player.time}</li>`;
+        playerList.innerHTML += `<li class="homeLeaderboard">${medal} ${player.username} Lvl: ${player.level} - Time: ${player.time}</li>`;
+    
     });
-
+    
     const title = document.createElement('h1');
     title.textContent = 'Lobby Stats';
     
     const lobbyList = document.createElement('div')
     lobbyList.className = 'playerslist';
+    
     for (const key in frontEndPlayers) {
         const player = frontEndPlayers[key];
         const listItem = document.createElement('li');
         listItem.dataset.id = key;
         if (key === socket.id) listItem.classList.add('you');
-
-        const statusClass = player.ready ? 'status-ready' : 'status-not-ready';
+        listItem.style.fontSize = '0.8vw'
         const wins = player.gamesWon;
-        listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span class="${statusClass}">${wins} wins</span>`;
+        listItem.innerHTML = `<span>${player.username} ${key === socket.id ? '(You)' : ''}</span> <span>${wins} wins</span>`;
 
         lobbyList.appendChild(listItem);
     }
     const record = document.createElement('h2');
     if (fastestTime.toFixed(0)!== '10000'){
-    record.textContent = `Best Score: ${highestLevelID} Lvl: ${highestLevel} - Time: ${fastestTime.toFixed(1)} `;
+    record.textContent = `Best Score: ${highestLevelID} Lvl: ${highestLevel} - Time: ${fastestTime.toFixed(2)} `;
     }
+
     container.append(playerList, title, lobbyList, record, record);
-    
-    screen.append(container);
+    const loginContainer = document.querySelector('.login-container')
+    screen.insertBefore(container, loginContainer);
+    const oldChat = document.querySelector(".chatContainer");
 
-
+    if (oldChat){
+        oldChat.style.height = loginContainer.clientHeight+ 'px'
+        container.style.height = loginContainer.clientHeight -63 + 'px';
+        return;
+    }
     
+    const chatContainer = document.createElement('div');
+    chatContainer.className = 'chatContainer';
+    console.log(container.clientHeight)
+    chatContainer.style.height = loginContainer.clientHeight+ 'px'
+    container.style.height = loginContainer.clientHeight -63 + 'px';
+
+    const chatTitle = document.createElement('h1')
+    chatTitle.textContent = 'Chat';
+
+    messageBox = document.createElement('div')
+    messageBox.id = 'messages';
+
+    inputArea = document.createElement('div')
+    input = document.createElement('input')
+    input.type = 'text'
+    input.placeholder= 'type your message'
+    inputArea.append(input);
+     
+   input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && input.value !== ''){
+            const newMessageText = yourUsername + ": " + input.value.trim();
+            
+
+            const newMessageDiv = document.createElement('div');
+            newMessageDiv.style.borderBottom = '1px'
+            newMessageDiv.textContent = newMessageText;
+            messageBox.appendChild(newMessageDiv)
+            messageBox.scrollTop = messageBox.scrollHeight
+            
+            socket.emit('updateMessages', newMessageText);
+            input.value = '';
+        }
+    });
+    chatContainer.append(chatTitle, messageBox, inputArea)
+ 
+    screen.append(chatContainer)
+
+});
+socket.on('updateMessages', (message) => {
+    console.log(message)
+    messageBox = document.querySelector('#messages');
+    if (messageBox){
+        const newMessageText = message
+        const newMessageDiv = document.createElement('div');
+        newMessageDiv.textContent = newMessageText;
+        messageBox.appendChild(newMessageDiv)
+        messageBox.scrollTop = messageBox.scrollHeight
+    }
 });
 
 socket.on('updateTime', (time) => {
      timeElapsed = time;
     document.querySelectorAll('.timer').forEach(t => {
-        t.textContent = `Time elapsed: ${(time).toFixed(1)}`;
+        t.textContent = `Time elapsed: ${(time).toFixed(2)}`;
     });
 });
 
@@ -481,7 +596,7 @@ socket.on('gameOver', (backEndPlayers,mode) => {
     const playerList = document.createElement('ol');
     playersArray.forEach((player, index) => {
         const medal = ['🥇 1ST', '🥈 2ND', '🥉 3RD'][index] || `${index + 1}TH`;
-        playerList.innerHTML += `<li>${medal} ${player.username} Lvl: ${player.level} - Time: ${player.timeFinished.toFixed(1)}</li>`;
+        playerList.innerHTML += `<li>${medal} ${player.username} Lvl: ${player.level} - Time: ${player.timeFinished.toFixed(2)}</li>`;
 
 
     });
@@ -525,7 +640,7 @@ socket.on('finished', (player, id) => {
     p2.textContent = 'Level: ' + frontEndPlayers[id].level;
     temp.append(p0, p1, p2, p3);
         container.innerHTML = `DOPADOWN!<br>Position: ${position}`;
-        Object.assign(container.style, { fontSize: '3vw', color: 'lime', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' });
+        Object.assign(container.style, { fontSize: '16px', color: '#77dd77', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' });
         
     }
 });
@@ -558,11 +673,11 @@ socket.on('cellClicked', (num, player) => {
         pData.chances--;
         if (pData.chances <= 0) pData.lives--;
     }
-    if (player === socket.id) socket.emit('updateScore', pData, player);
+    if (player === socket.id) socket.emit('updateState', pData, player);
 });
 */
-socket.on('updateScore', (pData, playerId) => {
-    socket.emit('updateScore', pData, playerId)
+socket.on('updateState', (pData, playerId) => {
+    socket.emit('updateState', pData, playerId)
 });
 socket.on('wonRound', (pData, playerId) => {
     socket.emit('wonRound', pData, playerId)
@@ -573,7 +688,7 @@ socket.on('cellUpdate', ({ playerId, num, isCorrect }) => {
     frontEndPlayers[playerId].cellsClicked.push(num);
     if (cell) {
         // Set the background color based on the result from the server
-        cell.style.backgroundColor = isCorrect ? '#0f0' : '#f00';
+        cell.style.backgroundColor = isCorrect ? '#77dd77' : '#e94560';
     }
 });
 

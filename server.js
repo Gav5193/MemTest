@@ -60,7 +60,8 @@ app.get('/multiplayer/create/:mode', (req, res) => {
         highestLevel: 0,
         highestLevelID: null,
         roundHighestLevel: 0,
-        gameOverTimeSet: false
+        gameOverTimeSet: false,
+        finishedTimer: null
 
     };
     players[roomId] = {};
@@ -123,6 +124,9 @@ server.listen(port, () => {
 
 io.on('connection', (socket) => {
 
+    socket.on('updateMessages', (message)=>{
+        socket.broadcast.to(socket.roomId).emit('updateMessages', message);
+    });
     socket.on('joinLobby', async (roomId, username) => {
         
         let roomMode = null;
@@ -248,23 +252,7 @@ io.on('connection', (socket) => {
         }
 
         io.to(roomId).emit('disconnected', lobbyPlayers, socket.id, lobbyData[mode][roomId].inProgress);
-        /*
-        let allFinished = true;
-        for (const id in lobbyPlayers) {
-            if (lobbyPlayers[id].finished === false) {
-                allFinished = false;
-                break;
-            }
-        }
-
-        if (allFinished && lobbyData[mode][roomId].inProgress && lobbyData[mode][roomId].remainingTime > 30) {
-            clearInterval(lobbyData[mode][roomId].roundTimer);
-            const firstPlayerId = Object.keys(lobbyPlayers)[0];
-            startRoundTimer(firstPlayerId, 3, roomId);
-            setTimeout(() => {
-                loadRound(firstPlayerId, false, roomId);
-            }, 3000);
-        }*/
+       
     });
 
     socket.on('ready', (player, id) => {
@@ -332,15 +320,15 @@ socket.on('cellClicked', (num) => {
         const clickedCorrectCells = pData.cellsClicked.filter(cell => correctCellsForLevel.includes(cell));
 
         if (clickedCorrectCells.length === correctCellsForLevel.length) {
-            // This player won the round. We can reuse the 'wonRound' logic.
-            // We emit the event back to this specific socket to trigger the handler.
+            
             socket.emit('wonRound', pData, playerId);
         }
     } else {
         pData.chances--;
         if (pData.chances === 0 ) pData.lives--;
-        // This player made a mistake. We can reuse the 'updateScore' logic.
-        socket.emit('updateScore', pData, playerId);
+        
+
+        socket.emit('updateState', pData, playerId);
     }
 });
 
@@ -368,8 +356,6 @@ socket.on('cellClicked', (num) => {
                             currentLobby.highestLevelID = lobbyPlayers[player].username;
                         }
                         }
-                    
-                    
                     lobbyPlayers[player].finished = true;
                     lobbyPlayers[player].timeFinished = currentLobby.timer;
                 }
@@ -385,12 +371,8 @@ socket.on('cellClicked', (num) => {
             if (allFinished){
                 currentLobby.inProgress = false;
                 for(const p in lobbyPlayers){
-                    
                     await db.addTime(mode, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished);
-
                 }
-
-            
                 io.to(roomId).emit('gameOver', lobbyPlayers, mode)
                 
                 return;
@@ -417,10 +399,11 @@ socket.on('cellClicked', (num) => {
             return;
         }
         
+        // Start the next round if player isn't finished
         loadRound(player, false, roomId)
     });
 
-    socket.on('updateScore', async (playerData, player) => {
+    socket.on('updateState', async (playerData, player) => {
         const { roomId, mode } = socket;
         if (!roomId || !mode || !lobbyData[mode][roomId]) return;
         
@@ -455,16 +438,17 @@ socket.on('cellClicked', (num) => {
 
             if (allDeadInGame) {
                 for (const p in lobbyPlayers) {
-                    lobbyPlayers[p].ready = false
+                   
                     
                     await db.addTime(mode, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished)
 
 
                 }
-                clearInterval(currentLobby.roundTimer);
+                // Clear the Timer set inprogress to false
+             
                 currentLobby.inProgress = false;
                 
-              
+         
                 
                 io.to(roomId).emit('gameOver', lobbyPlayers, mode);
                 return;
@@ -473,7 +457,7 @@ socket.on('cellClicked', (num) => {
            
 
             if (lobbyPlayers[player].chances <= 0 || lobbyPlayers[player].lives <= 0) {
-                
+             
                 loadRound(player, false, roomId);
                
               
@@ -497,13 +481,19 @@ function loadRound(player, isNewGame, roomId) {
     const lobbyPlayers = players[roomId];
 
     let allDead = true;
+    let allFinished = true;
     for (const id in lobbyPlayers) {
         if (lobbyPlayers[id].lives > 0) allDead = false;
+        if (!lobbyPlayers[id].finished) allFinished = false;
     }
     if (allDead) {
         currentLobby.inProgress = false;
         io.to(roomId).emit('gameOver', lobbyPlayers, mode);
-        
+        return;
+    }
+    if (allFinished){
+        currentLobby.inProgress = false;
+        io.to(roomId).emit('gameOver', lobbyPlayers, mode)
         return;
     }
 
@@ -539,7 +529,7 @@ function startGameTimer(time, roomId) {
 
     const currentLobby = lobbyData[mode][roomId];
     currentLobby.roundTimer = setInterval(() => {
-        currentLobby.timer = (currentLobby.timer + 0.1);
+        currentLobby.timer = (currentLobby.timer + 0.01);
         io.to(roomId).emit('updateTime', currentLobby.timer);
-    }, 100);
+    }, 10);
 }
