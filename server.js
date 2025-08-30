@@ -173,7 +173,7 @@ io.on('connection', (socket) => {
         socket.mode = roomMode;
         const lobby = lobbyData[roomId]
         if (!lobbyData[roomId].inProgress){
-            if (lobby.winner  ){
+            if (lobby.winner && players[roomId][lobby.winner]){
 
                 players[roomId][lobby.winner].gamesWon++;
             }

@@ -23,9 +23,13 @@ body {
     color: var(--color-text);
     image-rendering: pixelated; /* Keeps fonts sharp */
     height: 100vh;
+    
 }
 
+
+
 #screen {
+    zoom: 110%;
     width: 100%;
     height: 100%;
     display: flex;
