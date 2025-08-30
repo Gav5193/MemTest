@@ -296,7 +296,7 @@ io.on('connection', (socket) => {
 
     // In server.js
 
-// DELETE the old 'cellClicked' handler and REPLACE it with this:
+
 socket.on('cellClicked', (num) => {
     const { roomId, mode, id: playerId } = socket;
     if (!roomId || !mode || !players[roomId] || !players[roomId][playerId]) return;
@@ -436,18 +436,15 @@ socket.on('cellClicked', (num) => {
             }
 
             let allDeadInGame = true;
-            
+            let allFinished = true; 
             for (const key in lobbyPlayers) {
                 if (lobbyPlayers[key].lives >= 1) allDeadInGame = false;
-                
+                if (lobbyPlayers[key].finished === false) allFinished = false;
             }
 
-            if (allDeadInGame) {
+            if (allDeadInGame || allFinished) {
                 for (const p in lobbyPlayers) {
-                   
-                    
                     await db.addTime(mode, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished)
-
 
                 }
                 // Clear the Timer set inprogress to false
@@ -455,7 +452,7 @@ socket.on('cellClicked', (num) => {
                 currentLobby.inProgress = false;
                 
          
-                
+    
                 clearInterval(currentLobby.roundTimer)
                 io.to(roomId).emit('gameOver', lobbyPlayers, mode);
                 return;
@@ -487,6 +484,7 @@ function loadRound(player, isNewGame, roomId) {
     
     const lobbyPlayers = players[roomId];
 
+    /*
     let allDead = true;
     let allFinished = true;
     for (const id in lobbyPlayers) {
@@ -502,7 +500,7 @@ function loadRound(player, isNewGame, roomId) {
         currentLobby.inProgress = false;
         io.to(roomId).emit('gameOver', lobbyPlayers, mode)
         return;
-    }
+    }*/
 
     // Loadgrid
     lobbyPlayers[player].gridRow = 4 + Math.ceil(lobbyPlayers[player].level / 3);

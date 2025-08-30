@@ -10,6 +10,7 @@ var timeElapsed = 0;
 var position = 0;
 var yourUsername = 'guest';
 
+var roundListener = null;
 var state = "";
 const frontEndPlayers = {};
 
@@ -281,7 +282,7 @@ function generateCorrect(id) {
         if (cell) cell.style.backgroundColor = '#ede8d0';
     });
 
-    frontEndPlayers[id].listener = setTimeout(() => {
+    roundListener= setTimeout(() => {
         
         const pData = frontEndPlayers[id];
         pData.correctData[level-1].forEach(index => {
@@ -298,6 +299,7 @@ function generateCorrect(id) {
 }
 
 function renderGameScreen(player, isNewGame) { // Player refers to playerID
+    if (player === socket.id){
     screen.innerHTML = '';
       
 
@@ -374,6 +376,7 @@ function renderGameScreen(player, isNewGame) { // Player refers to playerID
     screen.append(chatContainer)
     generateCorrect(socket.id);
     attach();
+}
 }
 
 function renderPlayerGrid(id, parentElement, gridRow) {
@@ -564,19 +567,30 @@ socket.on('updateTime', (time) => {
 });
 
 socket.on('nextRound', (player, players, newGame) => {
+
     
     if (frontEndPlayers[socket.id]){
         
     position = 0;
 
-    clearTimeout(frontEndPlayers[player].listener)
+    // if you are calling nextround clear the roundlistener
+    if (player === socket.id){
+        clearTimeout(roundListener)
+    }
     Object.assign(frontEndPlayers, players);
-    
+     if (frontEndPlayers[player].lives <= 0) {
+        const container = document.querySelector(`.grid[data-id="${player}"]`);
+        container.innerHTML = 'UTRASH!';
+        Object.assign(container.style, { fontSize: '3vw', color: '#e94560', display: 'flex', alignItems: 'center', justifyContent: 'center' });
+        generateText(player);
+        return;
+    }
     if(newGame){
     renderGameScreen(player, newGame);
     }
     else{
         if (player === socket.id){
+
             generateText(player);
             createGrid(frontEndPlayers[player].gridRow, player);
             generateCorrect(socket.id);
@@ -594,6 +608,7 @@ socket.on('nextRound', (player, players, newGame) => {
 
 
 socket.on('gameOver', (backEndPlayers,mode) => {
+    clearTimeout(roundListener)
     screen.innerHTML = '';
     screen.className = '';
     const container = document.createElement('div');

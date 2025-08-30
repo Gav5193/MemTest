@@ -6,7 +6,7 @@
     --color-secondary: #3b3b3b;
     --color-text: #ede8d0;
     --color-highlight: #ede8d0;
-    --color-textTwo: #fffcc7;
+    --color-textTwo: #ffff84;
     --font-retro: 'Press Start 2P', cursive;
     --border-retro: 4px solid var(--color-text);
     --border-inset: 4px solid #000;
@@ -204,7 +204,7 @@ body {
 }
 
 .leaderboard-container h1 {
-    color: #fffcc7;
+    color: var(--color-textTwo);
     text-shadow: 4px 4px 0px #000;
 }
 
