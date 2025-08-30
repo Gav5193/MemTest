@@ -9,8 +9,11 @@ let currentGameMode = '';
 var timeElapsed = 0;
 var position = 0;
 var yourUsername = 'guest';
-
+var localMode = null;
+var localFade = null;
+var localClick = null;
 var roundListener = null;
+var clickListener = null;
 var state = "";
 const frontEndPlayers = {};
 
@@ -107,18 +110,10 @@ function multiLobby(mode, isInProgress) {
     lobbyContainer.className = 'login-container';
 
     const title = document.createElement('h1');
-    title.style.marginBottom = '0px'
-    const modeText = document.createElement('h1')
+
+    
     title.textContent = 'BETA'
-    modeText.style.marginTop = '0px'
-    modeText.style.marginBottom = '0px'
-    modeText.style.fontSize = '1.2vw'
-    if (mode !== 'endless'){
-        modeText.textContent = `First to ${mode.charAt(0).toUpperCase() + mode.slice(1)}`;
-    }
-    else{
-        modeText.textContent = `${mode.charAt(0).toUpperCase() + mode.slice(1)} Mode`;
-    }
+  
     
     const lobbyLink = document.createElement('input');
     lobbyLink.type = 'text';
@@ -191,7 +186,7 @@ function multiLobby(mode, isInProgress) {
    
 
     listContainer.append(listTitle, list);
-    lobbyContainer.append(title, modeText, lobbyLink, usernameGroup, setUsernameButton, homeButton,  listContainer, readyButton);
+    lobbyContainer.append(title,  lobbyLink, usernameGroup, setUsernameButton, homeButton,  listContainer, readyButton);
 
     screen.appendChild(lobbyContainer);
 
@@ -282,8 +277,10 @@ function generateCorrect(id) {
         if (cell) cell.style.backgroundColor = '#ede8d0';
     });
 
+    if (ourFade){
     roundListener= setTimeout(() => {
         
+         
         const pData = frontEndPlayers[id];
         pData.correctData[level-1].forEach(index => {
             if (!pData.cellsClicked.includes(index)) {
@@ -297,9 +294,58 @@ function generateCorrect(id) {
     }, 3000);
     }
 }
+}
+/*
+function attach() {
+    const screen = document.querySelector('#screen');
+
+    // A single, smart event listener on the parent container
+    var delay = 0;
+    if (ourClick === false){
+        delay = 3000;
+    }
+    clickListener = setTimeout(() => {
+
+        const squares = document.querySelectorAll()
+    screen.onclick = function(event) {
+        const cell = event.target;
+        
+        // Check if the clicked element is a cell for the current player
+        if (cell.classList.contains('newCell') && cell.dataset.id === socket.id) {
+            console.log('cell was clicked: ' + socket.id);
+            socket.emit('cellClicked', parseInt(cell.style.gridArea));
+        }
+    };
+    }, delay);
+}*/
+function attach() {
+    // Need to access currentGameMode from index.js
+    // Ensure index.js is loaded before this script and currentGameMode is a global variable.
+
+    const click = document.querySelectorAll('.newCell[data-id="' + socket.id + '"]');
+
+         var delay = 0;
+    if (ourClick === false){
+        delay = 3000;
+    }
+    clickListener = setTimeout(() => {
+        click.forEach(cell => {
+            cell.addEventListener('click', () => {
+                console.log('cell was clicked' + socket.id)
+                // Pass the current game mode to the backend
+                socket.emit('cellClicked', parseInt(cell.style.gridArea));
+            });
+        });
+
+    }, delay);
+  
+}
+
+
+
 
 function renderGameScreen(player, isNewGame) { // Player refers to playerID
-    if (player === socket.id){
+    
     screen.innerHTML = '';
       
 
@@ -376,7 +422,7 @@ function renderGameScreen(player, isNewGame) { // Player refers to playerID
     screen.append(chatContainer)
     generateCorrect(socket.id);
     attach();
-}
+
 }
 
 function renderPlayerGrid(id, parentElement, gridRow) {
@@ -394,6 +440,7 @@ function renderPlayerGrid(id, parentElement, gridRow) {
 socket.on('disconnected', (backEndPlayers, id, inProgress) => {
     delete frontEndPlayers[id];
     const container = document.querySelector(`.grid-container[data-id="${id}"]`);
+    console.log(inProgress);
     if (inProgress) {
     for(const p in frontEndPlayers){
         renderGameScreen(frontEndPlayers[p], false);
@@ -433,8 +480,57 @@ socket.on('updateUsername', (backEndPlayers) =>{
         list.appendChild(listItem);
     }
 });
-socket.on('updateLobby', (backEndPlayers, records, fastestTime, fastestTimeID, highestLevel, highestLevelID, mode) => {
 
+socket.on('updateSettings', (mode, fade, click, records) => {
+     ourMode = mode;
+    ourFade = fade;
+    ourClick = click;
+        const allModes = document.querySelectorAll('.mode')
+        allModes.forEach((item)=> {
+            item.style.backgroundColor = '#3b3b3b'
+        });
+        const modeSelect = document.querySelector('#'+mode);
+        modeSelect.style.backgroundColor = '#aaaaaa'
+    
+    
+        const fadeSelect = document.querySelector('#fade')
+        if (ourFade){
+             fadeSelect.textContent = 'Fade'
+        }
+        else{
+            fadeSelect.textContent = 'No fade'
+        }
+    
+
+    
+        const clickSelect = document.querySelector('#click')
+
+        if (ourClick){
+             clickSelect.textContent = 'Early Click'
+        }
+        else{
+             clickSelect.textContent = 'Late Click'
+        }
+    
+    const container = document.querySelector('#leaderboardPlayers');
+    console.log(records)
+    container.innerHTML = '';
+    container.style.fontSize = '0.5vw';
+    const playerList = document.createElement('ol');
+    records.forEach((player, index) => {
+        const medal = ['🥇 1ST', '🥈 2ND', '🥉 3RD'][index] || `${index + 1}TH`
+        playerList.innerHTML += `<li class="homeLeaderboard">${medal} ${player.username} Lvl: ${player.level} - Time: ${player.time}</li>`;
+    });
+
+    container.append(playerList)
+    socket.emit('updateSocket', ourMode);
+   
+});
+socket.on('updateLobby', (backEndPlayers, records, fastestTime, fastestTimeID, highestLevel, highestLevelID, mode, fade_, click_) => {
+    
+    ourMode = mode;
+    ourFade = fade_
+    ourClick = click_
 
     screen.style.flexDirection = 'row';
     
@@ -469,12 +565,101 @@ socket.on('updateLobby', (backEndPlayers, records, fastestTime, fastestTimeID, h
     container.style.fontSize = '0.5vw';
     const playerList = document.createElement('ol');
 
-
+    playerList.id = 'leaderboardPlayers';
     records.forEach((player, index) => {
         const medal = ['🥇 1ST', '🥈 2ND', '🥉 3RD'][index] || `${index + 1}TH`
         playerList.innerHTML += `<li class="homeLeaderboard">${medal} ${player.username} Lvl: ${player.level} - Time: ${player.time}</li>`;
     
     });
+    
+    const settings = document.createElement('h1')
+    settings.textContent = 'Lobby Settings'
+
+    const firstRow = document.createElement('div')
+    const secondRow = document.createElement('div')
+    const thirdRow = document.createElement('div')
+
+    firstRow.style.display = 'flex'
+    firstRow.style.flexDirection = 'row'
+    secondRow.style.display = 'flex'
+    secondRow.style.flexDirection = 'row'
+    thirdRow.style.display = 'flex'
+    thirdRow.style.flexDirection = 'row'
+   
+    const five = document.createElement('button')
+    const ten = document.createElement('button')
+    const fifteen = document.createElement('button')
+    const twenty = document.createElement('button')
+    const twentyfive = document.createElement('button')
+    const endless = document.createElement('button')
+    const fade = document.createElement('button')
+    const click = document.createElement('button')
+
+    five.textContent = "5";
+    ten.textContent = '10';
+    fifteen.textContent = '15'
+    twenty.textContent = '20'
+    twentyfive.textContent = '25'
+    endless.textContent = 'Endless'
+
+    
+    five.id = "five";
+    ten.id = 'ten';
+    fifteen.id = 'fifteen'
+    twenty.id = 'twenty'
+    twentyfive.id = 'twentyfive'
+    endless.id = 'endless'
+    
+    if (ourFade === true){
+        fade.textContent = 'Fade'
+    }
+    else{
+        fade.textContent = 'No Fade'
+    }
+    
+    fade.id = 'fade'
+    if (ourClick === true){
+        click.textContent = 'Early Click'
+    }
+    else{
+        click.textContent = 'Late Click'
+    }
+    click.id = 'click'
+
+    five.className = 'mode'
+    ten.className = 'mode'
+    fifteen.className = 'mode'
+    twenty.className = 'mode'
+    twentyfive.className = 'mode'
+    endless.className = 'mode'
+
+    
+
+
+    secondRow.style.marginBottom = '2%'
+
+     
+    fade.addEventListener('click', () => {
+        ourFade = !ourFade;
+        if (ourMode === 'endless'){
+            ourFade = true;
+            return;
+        }
+        socket.emit('updateSettings', ourMode, ourFade, ourClick);
+    });
+    click.addEventListener('click', () => {
+            ourClick = !ourClick;
+            if (ourMode !== 'endless'){
+                ourClick = true;
+                return;
+            }
+            socket.emit('updateSettings', ourMode, ourFade, ourClick);
+        });
+
+    firstRow.append(five, ten, fifteen)
+    secondRow.append(twenty, twentyfive, endless)
+    thirdRow.append(fade, click);
+
     
     const title = document.createElement('h1');
     title.textContent = 'Lobby Stats';
@@ -498,7 +683,7 @@ socket.on('updateLobby', (backEndPlayers, records, fastestTime, fastestTimeID, h
     record.textContent = `Best Score: ${highestLevelID} Lvl: ${highestLevel} - Time: ${fastestTime.toFixed(2)} `;
     }
 
-    container.append(playerList, title, lobbyList, record, record);
+    container.append(playerList, settings, firstRow, secondRow, thirdRow, title, lobbyList, record);
     const loginContainer = document.querySelector('.login-container')
     screen.insertBefore(container, loginContainer);
     const oldChat = document.querySelector(".chatContainer");
@@ -546,6 +731,51 @@ socket.on('updateLobby', (backEndPlayers, records, fastestTime, fastestTimeID, h
  
     screen.append(chatContainer)
 
+    // Placed at end because they must be appended to screen
+
+    const currentMode = document.querySelector('#'+mode)
+
+    currentMode.style.backgroundColor = '#aaaaaa';
+    const select = document.querySelectorAll('.mode');
+    
+    console.log(select)
+    select.forEach((index) => {
+        index.addEventListener('click', () => {
+            let nowMode;
+            switch (index.textContent){
+                case 'Endless':
+                    nowMode = 'endless'
+                    break;
+                case '5':
+                    nowMode = 'five'
+                    break;
+                case '10':
+                    nowMode = 'ten'
+                   
+                    break;
+                case '15':
+                    nowMode = 'fifteen'
+                    break;
+                case '20':
+                    nowMode = 'twenty'
+                    break;
+                case '25':
+                    nowMode = 'twentyfive'
+                    break;
+            }
+            console.log(nowMode)
+            if (nowMode === 'endless'){
+                ourFade= true;
+            }
+            else{
+                ourClick = true;
+            }
+            if (nowMode !== ourMode){
+            socket.emit('updateSettings', nowMode, ourFade, ourClick)
+            }
+        });
+    });
+
 });
 socket.on('updateMessages', (message) => {
     console.log(message)
@@ -575,7 +805,8 @@ socket.on('nextRound', (player, players, newGame) => {
 
     // if you are calling nextround clear the roundlistener
     if (player === socket.id){
-        clearTimeout(roundListener)
+       clearTimeout(roundListener);
+       clearTimeout()
     }
     Object.assign(frontEndPlayers, players);
      if (frontEndPlayers[player].lives <= 0) {

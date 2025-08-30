@@ -223,6 +223,19 @@ body {
     font-size: 0.8vw
 }
 
+.leaderboard-container button {
+    font-family: var(--font-retro);
+    background-color: var(--color-secondary);
+    color: var(--color-text);
+    border: var(--border-retro);
+    padding: 10px; 
+    cursor: pointer;
+    width: 100%;
+}
+.leaderboard-container button:hover {
+    background-color: var(--color-highlight);
+    color: #000;
+}
 .chatContainer {
     width: 30%;
     background-color: var(--color-primary);

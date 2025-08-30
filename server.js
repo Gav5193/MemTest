@@ -12,11 +12,7 @@ const port = 3000;
 
 // Centralized object to hold all data for each lobby, organized by mode then roomId
 const lobbyData = {
-    "endless": {},
-    "ten": {},
-    "twenty": {},
-    'fifteen': {},
-    'five': {}
+ 
 };
 
 // Players are now stored by roomId
@@ -37,14 +33,10 @@ app.get('/multiplayer', (req, res) => {
 // Route to create a new lobby and redirect
 app.get('/multiplayer/create/:mode', (req, res) => {
     const mode = req.params.mode;
-    if (!lobbyData.hasOwnProperty(mode)) {
-        return res.status(404).send('Game mode not found');
-    }
-
-    const roomId = uuidV4();
+       const roomId = uuidV4();
 
     // Initialize room data within the correct mode
-    lobbyData[mode][roomId] = {
+    lobbyData[roomId] = {
         inProgress: false,
         level: 0,
         gridRow: 4,
@@ -61,9 +53,12 @@ app.get('/multiplayer/create/:mode', (req, res) => {
         highestLevelID: null,
         roundHighestLevel: 0,
         gameOverTimeSet: false,
-        finishedTimer: null
+        finishedTimer: null,
+        fade: true,
+        click: true
 
     };
+
     players[roomId] = {};
     console.log(`New room created: ${roomId} for mode ${mode}`);
 
@@ -77,10 +72,10 @@ app.get('/multiplayer/room/:roomId', (req, res) => {
     let mode = null;
 
     // Find the room across all modes
-    for (const gameMode in lobbyData) {
-        if (lobbyData[gameMode][roomId]) {
-            roomInfo = lobbyData[gameMode][roomId];
-            mode = gameMode;
+    for (const roomID in lobbyData) {
+        if (lobbyData[roomId]) {
+            roomInfo = lobbyData[roomId];
+            mode = lobbyData[roomId].mode;
             break;
         }
     }
@@ -99,7 +94,7 @@ app.get('/multiplayer/room/:roomId', (req, res) => {
 
 function generateCorrect(mode, roomId) {
     
-    const currentLobby = lobbyData[mode][roomId];
+    const currentLobby = lobbyData[roomId];
     currentLobby.correctData = [];
     for(let j = 0; j < currentLobby.targetLevel; j++){
         currentLobby.level++;
@@ -127,16 +122,47 @@ io.on('connection', (socket) => {
     socket.on('updateMessages', (message)=>{
         socket.broadcast.to(socket.roomId).emit('updateMessages', message);
     });
-    socket.on('joinLobby', async (roomId, username) => {
-        
-        let roomMode = null;
-        for (const mode in lobbyData) {
-            if (lobbyData[mode][roomId]) {
-                roomMode = mode;
-                break;
+    socket.on('updateSocket', (mode) =>{
+        socket.mode = mode;
+    });
+    socket.on('updateSettings', async(mode, fade, click) => {
+        if (!lobbyData[socket.roomId]) return;
+        const curLobby = lobbyData[socket.roomId];
+        curLobby.mode = mode;
+        curLobby.fade = fade;
+        curLobby.click = click; 
+        curLobby.fastestTime = 10000;
+        curLobby.fastestTimeID = null;
+        curLobby.highestLevel = 0;
+        curLobby.highestLevelID = null;
+        if (curLobby.mode === 'ten'){
+                curLobby.targetLevel = 10;
+            }else if(curLobby.mode === 'twenty'){
+                curLobby.targetLevel = 20;
             }
-        }
+            else if (curLobby.mode === 'five'){
+                curLobby.targetLevel = 5;
+            }
+            else if (curLobby.mode === 'fifteen'){
+                curLobby.targetLevel = 15;
+            }
+            else if (curLobby.mode === 'twentyfive'){
+                curLobby.targetLevel = 25;
+            }
+            else{
+                curLobby.targetLevel = 50 ;
+            }
+        const records = await db.getRecord(curLobby.mode, curLobby.fade, curLobby.click);
 
+        io.to(socket.roomId).emit('updateSettings', curLobby.mode, curLobby.fade, curLobby.click, records);
+
+    });
+    socket.on('joinLobby', async (roomId, username) => {
+        if (!lobbyData[roomId]) {
+            socket.emit('error', 'Room not found')
+            return;
+        }
+        let roomMode = lobbyData[roomId].mode;
         if (!roomMode || !players[roomId]) {
             socket.emit('error', 'Room not found');
             return;
@@ -145,13 +171,13 @@ io.on('connection', (socket) => {
         socket.join(roomId);
         socket.roomId = roomId;
         socket.mode = roomMode;
-        const lobby = lobbyData[roomMode][roomId]
-        if (!lobbyData[roomMode][roomId].inProgress){
+        const lobby = lobbyData[roomId]
+        if (!lobbyData[roomId].inProgress){
             if (lobby.winner  ){
 
                 players[roomId][lobby.winner].gamesWon++;
             }
-            clearInterval(lobbyData[roomMode][roomId].roundTimer)
+            clearInterval(lobbyData[roomId].roundTimer)
             var target = null;
             if (roomMode === 'ten'){
                 target = 10;
@@ -164,12 +190,14 @@ io.on('connection', (socket) => {
             else if (roomMode === 'fifteen'){
                 target = 15;
             }
+            else if (roomMode === 'twentyfive'){
+                target = 25;
+            }
             else{
                 target = 50 ;
-
             }
             
-          
+
             lobby.gameOverTimeSet= false
                 lobby.inProgress= false
                 lobby.level= 0,
@@ -216,8 +244,9 @@ io.on('connection', (socket) => {
         
         // If the game is in progress, the new player is a spectator.
     } 
-        const records = await db.getRecord(socket.mode);
-        io.to(roomId).emit('updateLobby', players[roomId], records, lobby.fastestTime, lobby.fastestTimeID, lobby.highestLevel, lobby.highestLevelID, socket.mode);
+        const records = await db.getRecord(lobby.mode, lobby.fade, lobby.click);
+
+        io.to(roomId).emit('updateLobby', players[roomId], records, lobby.fastestTime, lobby.fastestTimeID, lobby.highestLevel, lobby.highestLevelID, lobby.mode, lobby.fade, lobby.click);
         
     
         
@@ -243,15 +272,15 @@ io.on('connection', (socket) => {
 
         if (length === 0) {
             console.log(`Room ${roomId} is empty. Deleting.`);
-            if (lobbyData[mode][roomId]) {
-                clearInterval(lobbyData[mode][roomId].roundTimer);
-                delete lobbyData[mode][roomId];
+            if (lobbyData[roomId]) {
+                clearInterval(lobbyData[roomId].roundTimer);
+                delete lobbyData[roomId];
             }
             delete players[roomId];
             return;
         }
 
-        io.to(roomId).emit('disconnected', lobbyPlayers, socket.id, lobbyData[mode][roomId].inProgress);
+        io.to(roomId).emit('disconnected', lobbyPlayers, socket.id, lobbyData[roomId].inProgress);
        
     });
 
@@ -273,15 +302,15 @@ io.on('connection', (socket) => {
 
         if (allReady) {
             io.to(roomId).emit('updateUsername', lobbyPlayers);
-            lobbyData[mode][roomId].inProgress = true; 
+            lobbyData[roomId].inProgress = true; 
             setTimeout (() => {
             
             generateCorrect(mode, roomId)
-            console.log(lobbyData[mode][roomId].correctData)
+            console.log(lobbyData[roomId].correctData)
             startGameTimer(0, roomId);
             for (const p in lobbyPlayers) {
                 //lobbyPlayers[p].isSpectator = false;
-                    lobbyPlayers[p].correctData = JSON.parse(JSON.stringify(lobbyData[mode][roomId].correctData));
+                    lobbyPlayers[p].correctData = JSON.parse(JSON.stringify(lobbyData[roomId].correctData));
 
                 loadRound(p, true, roomId);
             }
@@ -339,13 +368,13 @@ socket.on('cellClicked', (num) => {
 
     socket.on('wonRound', async (frontEndPlayers, player) => {
         const { roomId, mode } = socket;
-        if (!roomId || !mode || !lobbyData[mode][roomId]) return;
+        if (!roomId || !mode || !lobbyData[roomId]) return;
 
         const lobbyPlayers = players[roomId];
         lobbyPlayers[player].level++;
         
 
-        const currentLobby = lobbyData[mode][roomId];
+        const currentLobby = lobbyData[roomId];
         let allFinished = true;
         if (lobbyPlayers && lobbyPlayers[player]) {
             if (lobbyPlayers[player].level === currentLobby.targetLevel) {
@@ -376,7 +405,7 @@ socket.on('cellClicked', (num) => {
             if (allFinished){
                 currentLobby.inProgress = false;
                 for(const p in lobbyPlayers){
-                    await db.addTime(mode, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished);
+                    await db.addTime(mode, currentLobby.fade, currentLobby.click, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished);
                 }
                 clearInterval(currentLobby.roundTimer)
                 io.to(roomId).emit('gameOver', lobbyPlayers, mode)
@@ -395,7 +424,7 @@ socket.on('cellClicked', (num) => {
                             if(lobbyPlayers[p].finished === false){
                                 lobbyPlayers[p].timeFinished = currentLobby.timer;
                             }
-                            await db.addTime(mode, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished)
+                            await db.addTime(mode, currentLobby.fade, currentLobby.click, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished)
                         }
                         currentLobby.inProgress = false;
                         io.to(roomId).emit('gameOver', lobbyPlayers, mode);
@@ -411,10 +440,10 @@ socket.on('cellClicked', (num) => {
 
     socket.on('updateState', async (playerData, player) => {
         const { roomId, mode } = socket;
-        if (!roomId || !mode || !lobbyData[mode][roomId]) return;
+        if (!roomId || !mode || !lobbyData[roomId]) return;
         
         const lobbyPlayers = players[roomId];
-        const currentLobby = lobbyData[mode][roomId];
+        const currentLobby = lobbyData[roomId];
 
         if (lobbyPlayers && lobbyPlayers[socket.id]) {
     
@@ -444,7 +473,7 @@ socket.on('cellClicked', (num) => {
 
             if (allDeadInGame || allFinished) {
                 for (const p in lobbyPlayers) {
-                    await db.addTime(mode, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished)
+                    await db.addTime(mode, currentLobby.fade, currentLobby.click, lobbyPlayers[p].username, lobbyPlayers[p].level, lobbyPlayers[p].timeFinished)
 
                 }
                 // Clear the Timer set inprogress to false
@@ -472,13 +501,12 @@ socket.on('cellClicked', (num) => {
 });
 
 function loadRound(player, isNewGame, roomId) {
-    let mode;
-    for (const m in lobbyData) {
-        if (lobbyData[m][roomId]) { mode = m; break; }
-    }
+    let mode = lobbyData[roomId].mode
+
+  
     if (!mode) return;
 
-    const currentLobby = lobbyData[mode][roomId];
+    const currentLobby = lobbyData[roomId];
     if (!currentLobby || !currentLobby.inProgress) return;
 
     
@@ -526,13 +554,11 @@ function loadRound(player, isNewGame, roomId) {
 
 
 function startGameTimer(time, roomId) {
-    let mode;
-    for (const m in lobbyData) {
-        if (lobbyData[m][roomId]) { mode = m; break; }
-    }
+    let mode = lobbyData[roomId].mode
+   
     if (!mode) return;
 
-    const currentLobby = lobbyData[mode][roomId];
+    const currentLobby = lobbyData[roomId];
     currentLobby.roundTimer = setInterval(() => {
         currentLobby.timer = (currentLobby.timer + 0.01);
         
