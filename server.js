@@ -126,7 +126,8 @@ io.on('connection', (socket) => {
         socket.mode = mode;
     });
     socket.on('updateSettings', async(mode, fade, click) => {
-        if (!lobbyData[socket.roomId]) return;
+
+        if (!lobbyData[socket.roomId] || lobbyData[socket.roomId].inProgress) return;
         const curLobby = lobbyData[socket.roomId];
         curLobby.mode = mode;
         curLobby.fade = fade;
@@ -314,7 +315,7 @@ io.on('connection', (socket) => {
 
                 loadRound(p, true, roomId);
             }
-         }, 2000);
+         }, 750);
            
             
             
