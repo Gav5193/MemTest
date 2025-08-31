@@ -689,9 +689,9 @@ socket.on('updateLobby', (backEndPlayers, records, fastestTime, fastestTimeID, h
     const oldChat = document.querySelector(".chatContainer");
 
     if (oldChat){
-        oldChat.style.height = loginContainer.clientHeight+ 'px'
-        container.style.height = loginContainer.clientHeight -63 + 'px';
-        return;
+        
+        oldChat.remove()
+
     }
     
     const chatContainer = document.createElement('div');
