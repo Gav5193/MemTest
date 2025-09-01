@@ -6,6 +6,9 @@ const screen = document.querySelector('#screen');
 let currentGameMode = '';
 
 
+const correct = new Audio('/Sounds/correct.mp3');
+const incorrect = new Audio('/Sounds/incorrect.wav');
+
 var timeElapsed = 0;
 var position = 0;
 var yourUsername = 'guest';
@@ -810,8 +813,9 @@ socket.on('nextRound', (player, players, newGame) => {
     }
     Object.assign(frontEndPlayers, players);
      if (frontEndPlayers[player].lives <= 0) {
+      
         const container = document.querySelector(`.grid[data-id="${player}"]`);
-        container.innerHTML = 'UTRASH!';
+        container.innerHTML = 'NO MANA!';
         Object.assign(container.style, { fontSize: '3vw', color: '#e94560', display: 'flex', alignItems: 'center', justifyContent: 'center' });
         generateText(player);
         return;
@@ -838,7 +842,9 @@ socket.on('nextRound', (player, players, newGame) => {
 
 
 
-socket.on('gameOver', (backEndPlayers,mode) => {
+socket.on('gameOver', (backEndPlayers, mode) => {
+
+ 
     clearTimeout(roundListener)
     screen.innerHTML = '';
     screen.className = '';
@@ -946,6 +952,10 @@ socket.on('cellUpdate', ({ playerId, num, isCorrect }) => {
     frontEndPlayers[playerId].cellsClicked.push(num);
     if (cell) {
         // Set the background color based on the result from the server
+        if (playerId === socket.id){
+        isCorrect ? correct.currentTime = 0 : incorrect.currentTime = 0
+        isCorrect ?  correct.play() : incorrect.play()
+        }
         cell.style.backgroundColor = isCorrect ? '#77dd77' : '#e94560';
     }
 });
