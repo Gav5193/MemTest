@@ -294,7 +294,7 @@ io.on('connection', (socket) => {
         let allReady = true;
         
         for (const p in lobbyPlayers) {
-            // Spectators don't need to be ready to start the game.
+         
             if (!lobbyPlayers[p].ready ) {
                 allReady = false;
                 break;
@@ -310,7 +310,7 @@ io.on('connection', (socket) => {
             console.log(lobbyData[roomId].correctData)
             startGameTimer(0, roomId);
             for (const p in lobbyPlayers) {
-                //lobbyPlayers[p].isSpectator = false;
+              
                     lobbyPlayers[p].correctData = JSON.parse(JSON.stringify(lobbyData[roomId].correctData));
 
                 loadRound(p, true, roomId);
@@ -324,7 +324,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // In server.js
+
 
 
 socket.on('cellClicked', (num) => {

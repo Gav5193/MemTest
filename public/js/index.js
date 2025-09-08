@@ -20,7 +20,7 @@ var clickListener = null;
 var state = "";
 const frontEndPlayers = {};
 
-// --- New Entry Point for Lobby Page ---
+
 function initializeLobby() {
     socket.connect();
     yourUsername = sessionStorage.getItem('username') || 'Guest';
@@ -322,8 +322,7 @@ function attach() {
     }, delay);
 }*/
 function attach() {
-    // Need to access currentGameMode from index.js
-    // Ensure index.js is loaded before this script and currentGameMode is a global variable.
+ 
 
     const click = document.querySelectorAll('.newCell[data-id="' + socket.id + '"]');
 
